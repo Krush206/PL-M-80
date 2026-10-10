@@ -37,7 +37,7 @@
 
 #include <string.h>
 
-//#ifdef _WIN32
+#ifdef _WIN32
 #include <io.h>
 #define close   _close
 #define open    _open
@@ -45,12 +45,12 @@
 #define write   _write
 #define unlink  _unlink
 #define lseek   _lseek
-//#else
-//#include <unistd.h>
-//#include <errno.h>
-//#define _MAX_PATH 4096
-//#define O_BINARY    0
-//#endif
+#else
+#include <unistd.h>
+#include <errno.h>
+#define _MAX_PATH 4096
+#define O_BINARY    0
+#endif
 
 
 #include "plm.h"
@@ -215,7 +215,7 @@ int main(int argc, char **argv)
         showVersion(stdout, 0);
         exit(0);
     }
-    if (argc == 2 && _stricmp(argv[1], "-v") == 0)
+    if (argc == 2 && strcmp(argv[1], "-v") == 0)
     {
         showVersion(stdout, argv[1][1] == 'V');
         exit(0);
