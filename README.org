@@ -1,0 +1,29 @@
+#+TITLE: py-plm
+
+This is a compiler for the PL/M programming language (written in Python).
+It produces Z80 assembly code as output.
+There are several components:
+ * preprocessor,
+ * comment remover,
+ * literally expander,
+ * parser,
+ * code generator.
+All of these are command line tools.
+The main program ~plm.py~ calls each of these in the row and produces Z80
+assembly output.
+
+The ~tests~ directory has several tests.
+In order to build them, several tools are used:
+ * z88dk-z80asm
+ * zxcc
+ * zsm4
+ * plm80c, linkc, locate_c, objhex_c from ~c-ports~ of ~intel80tools~
+   available at https://github.com/ogdenpm/c-ports.
+ * asm80c can also be used to assemble files compatible with the Intel
+   software suite
+A program, namely ~do_tests.py~ runs the test programs with some example inputs
+and compares it to the ouput of the Intel PL/M-80 compiler.
+
+The software is still very fresh, so there are a lot of things that are either
+not implement at all, implemented superficially, or implemented very badly
+with a lot of bugs.

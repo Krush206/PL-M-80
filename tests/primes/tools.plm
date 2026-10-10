@@ -1,0 +1,74 @@
+tools:
+do;
+
+declare bdos address initial (05h);
+
+declare c$write literally '2';
+declare p$terminate literally '0';
+
+declare cr literally '13';
+declare lf literally '10';
+
+str$int: procedure (p) address public;
+    declare p address;
+    declare u (7) byte;
+    declare s based p (1) byte;
+    declare i byte;
+    declare n address;
+    n = 0;
+    i = 0;
+    do while s(i) >= '0' and s(i) <= '9';
+        n = n * 10;
+        n = n + s(i) - '0';
+        i = i + 1;
+    end;
+    return n;
+end str$int;
+
+pr$chr: procedure (chr) public;
+    declare chr byte;
+    call bdos(c$write, chr);
+end pr$chr;
+
+pr$num: procedure (n) public;
+    declare n address;
+    declare buf (8) byte;
+    declare i byte;
+    if n = 0 then
+        call pr$chr('0');
+    else
+    do;
+        i = 0;
+        do while n <> 0;
+            buf(i) = n mod 10;
+            n = n / 10;
+            i = i + 1;
+        end;
+        do while i <> 0;
+            call pr$chr(buf(i-1) + '0');
+            i = i - 1;
+        end;
+    end;
+end pr$num;
+
+pr$str: procedure (p$str) public;
+    declare p$str address;
+    declare str based p$str (1) byte;
+    declare i byte;
+    i = 0;
+    do while str(i) <> 0;
+        call pr$chr(str(i));
+        i = i + 1;
+    end;
+end pr$str;
+
+newline: procedure public;
+    call pr$chr(cr);
+    call pr$chr(lf);
+end newline;
+
+terminate: procedure public;
+    call bdos(p$terminate, 0);
+end terminate;
+
+end tools;

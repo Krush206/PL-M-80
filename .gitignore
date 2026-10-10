@@ -1,0 +1,14 @@
+*.obj
+*.lst
+*.asm
+*.rel
+*.mod
+*.loc
+*.hex
+*.com
+*.sym
+*.o
+old
+__pycache__
+.ticks_history.txt
+*~

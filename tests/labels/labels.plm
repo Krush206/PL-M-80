@@ -1,0 +1,34 @@
+labels:
+do;
+
+$include (tools.inc)
+
+declare plm label public;
+
+declare i byte;
+declare (l1, l2) label;
+declare l3 label;
+
+plm:
+
+    i = 0;
+l1:
+    call pr$num(i);
+    call newline;
+    if i > 10 then go to l3;
+
+    i = i + 1;
+    if i mod 3 = 0 then goto l2;
+    goto l1;
+
+l2:
+    call pr$chr('@');
+    call newline;
+    goto l1;
+
+l3:
+    call pr$str(.('done', 0));
+    call newline;
+    call terminate;
+
+end labels;

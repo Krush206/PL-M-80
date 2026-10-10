@@ -1,0 +1,51 @@
+primes:
+do;
+
+$include (tools.inc)
+
+declare word literally 'address';
+declare boolean literally 'byte';
+declare true literally '0ffh';
+declare false literally '0';
+declare tab literally '9';
+
+declare plm label public;
+
+declare sz literally '225';
+declare arr (sz) byte;
+declare (i, j) word;
+declare c byte;
+
+plm:
+
+do i = 0 to sz - 1;
+    if i < 2 then
+        arr(i) = false;
+    else
+        arr(i) = true;
+end;
+
+do i = 2 to sz - 1;
+    do j = i * 2 to sz - 1 by i;
+        arr(j) = false;
+    end;
+end;
+
+c = 0;
+do i = 0 to sz - 1;
+    if arr(i) then
+    do;
+        call pr$num(i);
+        call pr$chr(tab);
+        if (c+1) mod 12 = 0 then
+            call newline;
+        c = c + 1;
+    end;
+end;
+
+if c mod 12 <> 0 then
+    call newline;
+
+call terminate;
+
+end primes;

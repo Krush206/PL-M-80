@@ -1,0 +1,133 @@
+heap:
+do;
+
+$include (tools.inc)
+
+declare word literally 'address';
+declare boolean literally 'byte';
+declare true literally '0ffh';
+declare false literally '0';
+
+pr$array: procedure (p$arr, arrsz);
+    declare p$arr address;
+    declare arr based p$arr (1) word;
+    declare arrsz byte;
+    declare j byte;
+    call pr$str(.('(', 0));
+    j = 0;
+    do while j < arrsz;
+        call pr$num(arr(j));
+        if j <> arrsz-1 then
+        do;
+            call pr$chr(',');
+            call pr$chr(' ');
+        end;
+        j = j + 1;
+    end;
+    call pr$chr(')');
+end pr$array;
+
+swap: procedure (p$arr, a, b);
+    declare p$arr address;
+    declare arr based p$arr (1) word;
+    declare (a, b) byte;
+    declare tmp word;
+    tmp = arr(a);
+    arr(a) = arr(b);
+    arr(b) = tmp;
+end swap;
+
+heap$up: procedure (p$arr, x);
+    declare p$arr address;
+    declare arr based p$arr (1) word;
+    declare (x, p) byte;
+    declare tmp word;
+    p = x;
+    do while p > 0;
+        p = (x-1) / 2;
+        if arr(p) < arr(x) then
+            call swap(p$arr, p, x);
+        x = p;
+    end;
+end heap$up;
+
+heap$down: procedure (p$arr, m);
+    declare p$arr address;
+    declare arr based p$arr (1) word;
+    declare m byte;
+    declare (l, r, n, x) byte;
+    x = 0;
+    l = x * 2 + 1;
+    r = x * 2 + 2;
+    do while l < m;
+        if r = m or arr(l) > arr(r) then
+            n = l;
+        else
+            n = r;
+        if arr(n) > arr(x) then
+            call swap(p$arr, n, x);
+        x = n;
+        l = x * 2 + 1;
+        r = x * 2 + 2;
+    end;
+end heap$down;
+
+heap$sort: procedure (p$arr, arrsz);
+    declare p$arr address;
+    declare arr based p$arr (1) word;
+    declare arrsz byte;
+    declare (i, j) byte;
+    declare tmp word;
+    if arrsz = 0 then
+        return;
+    do i = 1 to arrsz-1;
+        call heap$up(p$arr, i);
+    end;
+    do i = 1 to arrsz;
+        j = arrsz - i;
+        call swap(p$arr, 0, j);
+        call heap$down(p$arr, j);
+    end;
+end heap$sort;
+
+declare plm label public;
+
+declare p$tail address data (80h);
+declare tail based p$tail (1) byte;
+declare array (80h) word;
+declare array$size byte;
+declare i byte;
+declare j byte;
+declare len byte;
+declare is$num boolean;
+
+plm:
+
+len = tail(0);
+tail(len+1) = 0;
+is$num = false;
+j = 0;
+do i = 1 to len;
+    if tail(i) >= '0' and tail(i) <= '9' then
+    do;
+        if not is$num then
+        do;
+            is$num = true;
+            array(j) = str$int(.tail(i));
+            j = j + 1;
+        end;
+    end;
+    else
+    do;
+        if is$num then
+            is$num = false;
+    end;
+end;
+array$size = j;
+call heap$sort(.array, array$size);
+call pr$array(.array, array$size);
+call newline;
+
+call terminate;
+
+end heap;
