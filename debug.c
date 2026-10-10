@@ -27,6 +27,8 @@
 #include <stdio.h>
 
 #include <stdarg.h>
+
+#ifdef _WIN32
 void dprintf(const char *fmt, ...)
 {
     FILE *log;
@@ -45,7 +47,7 @@ void dprintf(const char *fmt, ...)
     if (log)
         fclose(log);
 }
-
+#endif
 
 #ifdef _DEBUG
 FILE *Fopen(char *isisPath, char *mode);
