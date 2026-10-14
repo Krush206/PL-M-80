@@ -128,7 +128,7 @@ static void NestMacro()
         SetType(MACRO_T);   // mark the type as  MACRO_T to spot recursive expansion
         macroPtrs[macroDepth = macroDepth + 2] = inChrP;    // push the current location
         macroPtrs[macroDepth + 1] = off2Ptr(curMacroInfoP); // and infoP
-        inChrP = lit->str;
+        inChrP = (pointer)lit->str;
         inChrP += 1;
         curMacroInfoP = curInfoP;       // set up the new infoP
     }
@@ -143,7 +143,7 @@ static bool IsNotLit()
         tokenType = Low(SymbolP(curSymbolP)->infoP);
     else {
         FindInfo();
-        if (curInfoP != 0)
+        if (curInfoP != 0) {
             if (GetType() == LIT_T) {
                 NestMacro();
                 return false;
@@ -151,6 +151,7 @@ static bool IsNotLit()
                 TokenErrorAt(ERR6); /* ILLEGAL MACRO REFERENCE, RECURSIVE EXPANSION */
                 return false;
             }
+        }
     }
     return true;
 }
@@ -383,7 +384,7 @@ void ParseExpresion(byte endTok)
 {
     Yylex();
     while (tokenType != endTok && tokenType != T_SEMICOLON) {
-        if (T_CALL <= tokenType && tokenType <= T_RETURN || tokenType == T_BREAK || tokenType == T_CONTINUE)
+        if ((T_CALL <= tokenType && tokenType <= T_RETURN) || tokenType == T_BREAK || tokenType == T_CONTINUE)
             break;
         WrLexToken();
         Yylex();
