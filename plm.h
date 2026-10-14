@@ -1423,6 +1423,8 @@ extern word objByte;
 extern bool OBJECTSet;
 extern file_t objFile;
 extern byte objFileName[];
+extern file_t asmFile;
+extern byte asmFileName[];
 extern word offFirstChM1;
 extern word PAGELEN;
 extern word pageNo;
@@ -1719,6 +1721,21 @@ void WrnStrLst(pointer strP, word cnt);
 void ClrFlags(pointer base);
 
 extern byte copyRight[];
+
+/* z80asm.c - flat Z80 assembly output for the z80asm assembler */
+void Z80_Begin(void);
+void Z80_AtPrescan(void);
+void Z80_DataVarBegin(word seg, word addr, bool emit, word infoNorm);
+void Z80_DataVarEnd(void);
+void Z80_DataValue(word val);
+void Z80_DataSymRef(bool isExt, word val);
+void Z80_DataWalk(void);
+void Z80_DataFlush(void);
+void Z80_Label(void);
+void Z80_Code(void);
+void Z80_Stmt(void);
+void Z80_IntVec(word addr, word target);
+void Z80_End(void);
 
 /* version.c */
 void showVersion(FILE *fp, bool full);
