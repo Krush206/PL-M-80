@@ -29,8 +29,8 @@ static byte stateMain;
 void FatalError_main(byte err)
 {
     if (err == ERR83)
-        Fatal("DYNAMIC STORAGE OVERFLOW", 24);
-    Fatal("UNKNOWN FATAL ERROR", 19);
+        Fatal((pointer)"DYNAMIC STORAGE OVERFLOW", 24);
+    Fatal((pointer)"UNKNOWN FATAL ERROR", 19);
     Exit();
 }
 
