@@ -124,11 +124,12 @@ static void Sub_9EAA(byte arg1b, byte arg2b)
 {
 
     *pb_C2EB = (*pb_C2EB << 4) & 0xf0;
-    if (arg1b != 0)
+    if (arg1b != 0) {
         if (tx2Aux1b[arg1b] == 0)
             *pb_C2EB = *pb_C2EB | b9BAE[arg2b];
         else
             *pb_C2EB = *pb_C2EB | b9BAC[arg2b];
+    }
 }
 
 void m2p3_doCALLVAR()
