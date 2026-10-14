@@ -86,8 +86,8 @@ check: all
 	./tests/run_tests.sh ./$(PROG)
 
 install: all
-	install -d $(DESTDIR)$(PREFIX)/bin
-	install -m 0755 ./$(PROG) $(DESTDIR)$(PREFIX)/bin/$(PROG)
+	install -d $(PREFIX)/bin
+	install -m 0755 ./$(PROG) $(PREFIX)/bin/$(PROG)
 
 clean:
 	rm -f ./*.o ./$(PROG)
