@@ -208,11 +208,12 @@ static bool Sub_7801()
         if (Sub_76E2(arg2b_765B) != Sub_76E2(arg3b_765B))
             return false;
     if ((bC27F & 4) != 0) {
-        if ((bC27F & 8) != 0)
+        if ((bC27F & 8) != 0) {
             if (wC27B != 0)
                 return true;
             else
                 return false;
+        }
         p = w502A[b5048[arg1b_765B] >> 3];
         if (p != wC27B)
             return false;
@@ -244,15 +245,21 @@ static void Sub_7925()
         Sub_611A();
         bC27F = 0;
         k = 1;
-        if (curOp != T2_STAR)
-            if (curOp != T2_SLASH)
-                if (curOp != T2_MOD)
-                    if (wC27B < 0x100)
-                        if (Sub_76E2(arg2b_765B))
-                            if (arg3b_765B == 0)
+        if (curOp != T2_STAR) {
+            if (curOp != T2_SLASH) {
+                if (curOp != T2_MOD) {
+                    if (wC27B < 0x100) {
+                        if (Sub_76E2(arg2b_765B)) {
+                            if (arg3b_765B == 0) {
                                 k = 0;
+                            }
                             else if (Sub_76E2(arg2b_765B))
                                 k = 0;
+                        }
+                    }
+                }
+            }
+        }
         m2_setNumOrIdn(wC27B, 0, k, 8);
     } else {
         if (j == 1) {
