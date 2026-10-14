@@ -63,7 +63,7 @@ static void Sub_7D7E(byte arg1b)
 
 void cf_7A85()
 {
-    byte i, reg, k, m, n;
+    byte i, reg, k = 0, m, n;
 
     Sub_597E();
     for (i = 0; i <= 3; i++)
@@ -191,11 +191,12 @@ static void Sub_7FFC()
     }
     else if (bC298 == 0x14) {
         bC294 = 5 - bC297;
-        if (curTx2aux2b[0] == curTx2aux2b[1])
+        if (curTx2aux2b[0] == curTx2aux2b[1]) {
             if (curTx2aux1b[bC295] == 0)
                 bC298 = 0xE;
             else
                 bC298 = 0x11;
+        }
     }
     else if (bC298 == 8) {
         if (tx2op1[curOpParams[bC295]] != 0) {
@@ -236,7 +237,6 @@ static void Sub_8086()
 
 static void Sub_8148(byte arg1b, byte arg2b)
 {
-    byte i;
     if (arg2b == 0)
         return;
     if (arg2b == 1 || arg2b == 2) {
@@ -256,7 +256,6 @@ static void Sub_8148(byte arg1b, byte arg2b)
         cfCmdBufPos = cfCmdBufPos + 3;
     }
     else {
-        i = cfCmdBufPos;
         Sub_636A(bC295);
     }
 }
