@@ -286,7 +286,7 @@ void EmitLinePrefix()
             XnumLst(blkCnt, 2, 10);
         if (srcFileIdx != 0) {
             TabLst(-11);
-            XwrnstrLst("=", 1);
+            XwrnstrLst((pointer)"=", 1);
             if (srcFileIdx != 11)
                 XnumLst(srcFileIdx / 11 - 1, 1, 10);
         }
@@ -309,7 +309,7 @@ void EmitStatementNo()
     EmitLinePrefix();
     Z80_Stmt();
     TabLst(-50);
-    XwrnstrLst("; STATEMENT # ", 14);
+    XwrnstrLst((pointer)"; STATEMENT # ", 14);
     XnumLst(stmtNo, 0, 0xA);
     NewLineLst();
 }
@@ -322,7 +322,7 @@ void EmitLabel()
         EmitLinePrefix();
         TabLst(-26);
         XwrnstrLst(&locLabStr[1], locLabStr[0]);
-        XwrnstrLst(":", 1);
+        XwrnstrLst((pointer)":", 1);
         NewLineLst();
     }
 }
@@ -356,30 +356,30 @@ void EmitError()
         linePrefixChecked = linePrefixEmitted;
         listing = true;
         EmitLinePrefix();
-        XwrnstrLst("*** ERROR #", 11);
+        XwrnstrLst((pointer)"*** ERROR #", 11);
         XnumLst(errData.num, 0, 10);
-        XwrnstrLst(", ", 2);
+        XwrnstrLst((pointer)", ", 2);
         if (errData.stmt != 0)
         {
-            XwrnstrLst("STATEMENT #", 11);
+            XwrnstrLst((pointer)"STATEMENT #", 11);
             XnumLst(errData.stmt, 0, 10);
-            XwrnstrLst(", ", 2);
+            XwrnstrLst((pointer)", ", 2);
         }
         if (errData.info != 0)
         {
-            XwrnstrLst("NEAR '", 6);
+            XwrnstrLst((pointer)"NEAR '", 6);
             curInfoP = errData.info + botInfo;
             curSymbolP = GetSymbol();
             if (curSymbolP != 0)
                 XwrnstrLst(&SymbolP(curSymbolP)->name[1], SymbolP(curSymbolP)->name[0]);
             else
-                Xputstr2cLst("<LONG CONSTANT>", 0);
-            XwrnstrLst("', ", 3);
+                Xputstr2cLst((pointer)"<LONG CONSTANT>", 0);
+            XwrnstrLst((pointer)"', ", 3);
         }
         FindErrStr();
         TabLst(2);
         if (errLen == 0)
-            XwrnstrLst("UNKNOWN ERROR", 13);
+            XwrnstrLst((pointer)"UNKNOWN ERROR", 13);
         else
             XwrnstrLst(&errStrings[errOff], (byte)errLen);
         NewLineLst();
@@ -445,7 +445,7 @@ static byte GetSourceCh()
             crCnt = 0;
             CloseF(&srcFil);        /* unnest include file */
             srcFileIdx = srcFileIdx - 11;
-            InitF(&srcFil, "SOURCE", (pointer)&srcFileTable[srcFileIdx]);
+            InitF(&srcFil, (pointer)"SOURCE", (pointer)&srcFileTable[srcFileIdx]);
             OpenF(&srcFil, 1);
             SeekF(&srcFil, (loc_t *)&srcFileTable[srcFileIdx + 9]);
         }
