@@ -307,6 +307,7 @@ void EmitLinePrefix()
 void EmitStatementNo()
 {
     EmitLinePrefix();
+    Z80_Stmt();
     TabLst(-50);
     XwrnstrLst("; STATEMENT # ", 14);
     XnumLst(stmtNo, 0, 0xA);
@@ -316,6 +317,7 @@ void EmitStatementNo()
 
 void EmitLabel()
 {
+    Z80_Label();
     if (codeOn) {
         EmitLinePrefix();
         TabLst(-26);
@@ -396,6 +398,7 @@ void FatalError_ov46(byte arg1b)
 void ListCodeBytes()
 {
     byte i;
+    Z80_Code();
     if (codeOn) {
         if (opByteCnt > 0) {
             TabLst(-12);
