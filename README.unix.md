@@ -36,6 +36,57 @@ Examples:
 Exit status: `0` on success, `1` if the source had errors, `2` for command
 line / environment failures.
 
+## Z80 assembly output (z80asm)
+
+Whenever the `OBJECT` control is in effect the compiler writes, next to
+`hello.obj`, a `hello.asm` file with the module in the dialect of the
+`z80asm` assembler by Bas Wijnen (package `z80asm`):
+
+```sh
+./plm80c hello.plm          # writes hello.lst + hello.obj + hello.asm
+z80asm -o hello.bin hello.asm
+```
+
+`NOOBJECT` suppresses the `.asm` file together with the `.obj` file, and
+`OBJECT(dir/name.obj)` places `dir/name.asm` next to it.  The 8080 code the
+compiler generates is translated 1:1 to Z80 mnemonics; data definitions,
+the stack reservation and cross references are emitted symbolically, so no
+locator is needed.  There is deliberately no `org` directive in the file
+(the default origin is 0); prepend `org 100h` for CP/M-style binaries.
+
+Multi-module programs combine the per-module files with includes, e.g. a
+`top.asm` containing:
+
+```
+include 'main.asm'
+include 'lib.asm'
+```
+
+```sh
+z80asm -o prog.bin top.asm
+```
+
+Generated labels starting with `.` are local to their include file;
+`PUBLIC` and `EXTERNAL` symbols stay global, which is what links the
+modules together.  Each module reserves its own stack (`<mod>_STACK`,
+sized to the module's maximum stack depth with a 16 byte floor — enlarge
+the `ds` if the program nests deeper at run time); execution starts at
+the `ASM_START` label of the module that holds the main program.
+
+Limitations:
+
+* `INTERRUPT` vectors have no flat-binary equivalent and are emitted as
+  comments only (the handler bodies themselves are translated normally).
+* `BASED` variables get no label; referencing one by name fails at
+  assembly time (ordinary based access through the base works).
+* Modules that are not self-contained (anything `PUBLIC`/`EXTERNAL`, or
+  using 16-bit multiply/divide/modulo and similar runtime helpers) call
+  out to `Pnnn` helper labels and external symbols.  Provide Z80
+  implementations under the same global names (via another include) the
+  same way the Intel flow provides `PLM80.LIB`.
+* Do not give a `PUBLIC` procedure and a `PUBLIC` variable the same name;
+  the flat namespace cannot tell them apart.
+
 ## File naming rules
 
 * **Names may be quoted** with `'...'` or `"..."`, which allows spaces in
