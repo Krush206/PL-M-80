@@ -26,13 +26,6 @@
 #include "plm.h"
 
 // plmc.c
-#if defined(__WATCOMC__)
-#pragma off(unreferenced)
-#endif
-static byte vtext[] = "program_version_number=";
-#if defined(__WATCOMC__)
-#pragma on(unreferenced)
-#endif
 byte verNo[] = "V5.1";
 
 // plmf.c
@@ -128,7 +121,7 @@ static void InstallBuiltins()
         SetDataType(p[*p + 3]);
         p += *p + 4;
     }
-    Lookup("\x6MEMORY");
+    Lookup((pointer)"\x6MEMORY");
     CreateInfo(0, BYTE_T);
     SetInfoFlag(F_LABEL);
     SetInfoFlag(F_MEMORY);
