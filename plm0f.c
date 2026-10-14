@@ -299,13 +299,13 @@ static void State0()
     PushStateByte(1);            // check for module level <unit>
     if (stmtStartCode != S_DO) {
         SyntaxError(ERR89);     /* MISSING 'do' FOR MODULE */
-        Lookup("\x6MODULE");
+        Lookup((pointer)"\x6MODULE");
         CreateModuleInfo(curSymbolP);
         PushStateByte(19);      // next parse <declaration> assuming 'do' provided
     } else {
         if (stmtLabelCnt == 0) {
             SyntaxError(ERR90); /* MISSING NAME FOR MODULE */
-            Lookup("\x6MODULE");
+            Lookup((pointer)"\x6MODULE");
             stmtLabelCnt = 1;
             stmtLabels[1] = curSymbolP;
         } else if (stmtLabelCnt > 1)
