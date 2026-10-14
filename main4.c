@@ -106,6 +106,7 @@ void Sub_408B()
     listOff = false;
     codeOn = false;
     programErrCnt = linesRead = 0;
+    Z80_DataFlush();
 }
 
 
@@ -159,6 +160,7 @@ void Sub_423C()
         Fflush(&objFile);
         CloseF(&objFile);
     }
+    Z80_End();
 
     if (PRINT) {
         TellF(&srcFil, (loc_t *)&srcFileTable[srcFileIdx + 9]);
