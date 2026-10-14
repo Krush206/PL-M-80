@@ -20,7 +20,7 @@ There are no external dependencies.
 ## Usage
 
 ```sh
-./plm80c source.plm [controls]
+./plm80c source.plm [controls] [-o addr] [-h]
 ```
 
 Examples:
@@ -31,7 +31,14 @@ Examples:
 ./plm80c src/app.plm 'print(lst/app.lst)'
 ./plm80c "'sub dir/app.plm'"            # quoted: may contain spaces
 ./plm80c ':F1:hello.plm'                # use the :F1: device mapping
+./plm80c game.plm -o 0 -h               # Sega Master System ROM (see below)
 ```
+
+The `-o addr` option sets the initial `org` address of the generated
+`.asm` file (`0100h`, `0x100` and `256` all mean the same); without it no
+`org` is emitted.  The `-h` option appends a Sega Master System cartridge
+header (see below).  Both are removed from the command tail before the
+usual controls are parsed, so all existing controls keep working.
 
 Exit status: `0` on success, `1` if the source had errors, `2` for command
 line / environment failures.
@@ -86,6 +93,44 @@ Limitations:
   same way the Intel flow provides `PLM80.LIB`.
 * Do not give a `PUBLIC` procedure and a `PUBLIC` variable the same name;
   the flat namespace cannot tell them apart.
+
+## Sega Master System output
+
+`./plm80c game.plm -h` writes a `.asm` whose assembled binary is a 32KB
+SMS ROM image: the program followed by the 16-byte cartridge header at
+`7FF0H` (`"TMR SEGA"`, reserved `FFFFH`, zero checksum and product code,
+version 0, `4CH` = SMS Export with checksum range `0000-7FEF`):
+
+```sh
+./plm80c game.plm -h
+z80asm -o game.sms game.asm   # exactly 32768 bytes
+```
+
+The header always sits at absolute `7FF0H`, so use `-h` with the default
+origin 0.  If the program does not fit below the header the compiler
+refuses to write the `.asm` file (exit status 2); the `.obj`/`.lst` files
+are still produced.
+
+Most emulators boot the ROM as-is; strict ones (and real hardware) also
+want a valid checksum.  Patch it after assembling (big-endian 16-bit sum
+of bytes `0000-7FEF`):
+
+```sh
+python3 -c "d = bytearray(open('game.sms','rb').read())
+s = sum(d[0:0x7FF0]) & 0xFFFF
+d[0x7FFA] = s >> 8; d[0x7FFB] = s & 0xFF
+open('game.sms','wb').write(d)"
+```
+
+Two things remain application business.  First, the generated stack
+(`<mod>_STACK`, right behind the program) lives in ROM address space on
+the SMS, where pushes go nowhere: point `<mod>_STACK_ORIGIN` at RAM
+instead (e.g. replace the two stack lines with
+`GAME_STACK_ORIGIN: equ 0DFF0H`).  Second, the program starts at address
+0 with no BIOS services — bring your own VDP bring-up and put gameplay
+behind the `ASM_START` entry point.  Product code, version and region
+bytes in the header are compile-time constants in the `.asm` tail; edit
+them there if the defaults do not suit the release.
 
 ## File naming rules
 
