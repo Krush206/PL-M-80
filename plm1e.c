@@ -588,7 +588,7 @@ static void  ChkEndOfStmt()
 */
 static void ParseEndFOR()
 {
-    word p, q, r, s, t, hLab, eLab, w;
+    word p, q, r, s, hLab, eLab, w;
 
     p = procInfoStack[controlSP];
     hLab = hNodes[controlSP];
@@ -599,7 +599,7 @@ static void ParseEndFOR()
         WrTx2Item1Arg(T2_LOCALLABEL, nNodes[controlSP]);
         curInfoP = p;
         if (GetType() == BYTE_T)
-            t = WrTx2Item1Arg(T2_LOCALLABEL, NewLocalLabel());
+            (void)WrTx2Item1Arg(T2_LOCALLABEL, NewLocalLabel());
         q = Sub_677C(p);
         r = Sub_677C(p);
         s = WrTx2Item1Arg(T2_NUMBER, 1);
@@ -787,24 +787,23 @@ static void ParseUNTIL()
 
 static void ParseEND()
 {
-    word p;
     switch (stkBlocks[controlSP]) {
     case DO_PROC:
         curInfoP = curProcInfoP;
         SetInfoFlag(F_DEFINED);
         if (GetDataType() != 0 && !b9A13[controlSP])
             WrTx2Error(ERR156); /* MISSING RETURN STATEMENT IN TYPED PROCEDURE */
-        p = WrTx2Item(T2_ENDPROC);
+        (void)WrTx2Item(T2_ENDPROC);
         curProcInfoP = procInfoStack[controlSP];
         break;
     case DO_LOOP: break;
     case DO_WHILE:
-        p = WrTx2Item1Arg(T2_JMP, hNodes[controlSP]);
-        p = WrTx2Item1Arg(T2_LOCALLABEL, eNodes[controlSP]);
+        (void)WrTx2Item1Arg(T2_JMP, hNodes[controlSP]);
+        (void)WrTx2Item1Arg(T2_LOCALLABEL, eNodes[controlSP]);
         break;
     case DO_CASE:
-        p = WrTx2Item1Arg(T2_LOCALLABEL, hNodes[controlSP]);
-        p = WrTx2Item(T2_ENDCASE);
+        (void)WrTx2Item1Arg(T2_LOCALLABEL, hNodes[controlSP]);
+        (void)WrTx2Item(T2_ENDCASE);
         break;
     case DO_FOR: ParseEndFOR();
         break;
@@ -893,18 +892,16 @@ static void ParseCONTINUE()
 
 static void ParseStatement()
 {
-    word p;
     if (Sub_5945())
-        p = SerialiseParse(markedStSP);
+        (void)SerialiseParse(markedStSP);
     ChkEndOfStmt();
 }
 
 
 static void ParseCALL()
 {
-    word p;
     if (Sub_59D4())
-        p = SerialiseParse(markedStSP);
+        (void)SerialiseParse(markedStSP);
     ChkEndOfStmt();
 }
 
