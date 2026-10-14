@@ -97,7 +97,7 @@ void MiscControl() // was also in plm4a.c
             Fread(&tx2File, &name[0], 7);       /* overwrites the type byte */
             memmove((pointer)&srcFileTable[srcFileIdx], &name[1], 18);
             CloseF(&srcFil);
-            InitF(&srcFil, "SOURCE", &name[1]);
+            InitF(&srcFil, (pointer)"SOURCE", &name[1]);
             OpenF(&srcFil, 1);
             offCurCh = offLastCh;       /* force Read() next Time       */
             break;
