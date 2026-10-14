@@ -156,13 +156,14 @@ void ChkStructureMember()
 void GetVariable()
 {
     ChkIdentifier();
-    if (MatchTx1Item(L_PERIOD))
+    if (MatchTx1Item(L_PERIOD)) {
         if (GetType() != STRUCT_T)
             WrTx2ExtError(110); /* INVALID LEFT OPERAND OF QUALIFICATION, NOT A STRUCTURE */
         else if (NotMatchTx1Item(L_IDENTIFIER))
             WrTx2ExtError(111); /* INVALID RIGHT OPERAND OF QUALIFICATION, NOT IDENTIFIER */
         else
             ChkStructureMember();
+    }
 }
 
 void WrAtFile(pointer buf, word cnt)
