@@ -72,7 +72,8 @@ SRC := accessor.c \
        strcmp.c \
        util.c \
        version.c \
-       wrclst.c
+       wrclst.c \
+       z80asm.c
 OBJ := $(SRC:.c=.o)
 
 all: $(OBJ)
