@@ -31,7 +31,7 @@ offset_t CreateLit(word len, pointer pstr)
     reclit_t *lit;
     char *mem;
 
-    mem = AllocLiterally(len+1+3);
+    mem = (char *)AllocLiterally(len+1+3);
 
     litSymbol = AllocSymbol(10);
     lit = (reclit_t *) off2Ptr(litSymbol);
