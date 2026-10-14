@@ -40,9 +40,14 @@ static void FinishLexPass()
 } /* FinishLexPass() */
 
 
+/* Dummy first byte: ParseCommandLine() points inChrP at it so that the
+   leading inChrP++ in GNxtCh() lands on '\n' (previously this was done
+   with out-of-bounds arithmetic on a string literal). */
+static byte firstCh[2] = { 0, '\n' };
+
 static void ParseCommandLine()
 {
-    InitF(&srcFil, "SOURCE", (pointer)&srcFileTable[srcFileIdx]);
+    InitF(&srcFil, (pointer)"SOURCE", (pointer)&srcFileTable[srcFileIdx]);
     OpenF(&srcFil, 1);
     SeekF(&srcFil,  (loc_t *)&srcFileTable[srcFileIdx + 9]);
     offCurCh = offLastCh;
@@ -54,7 +59,7 @@ static void ParseCommandLine()
         }
     offFirstChM1 = 0;       // 0 if no more cmd line
     curScopeP = (wpointer)curScope;
-    inChrP = "\n" - 1;      // GNxtCh will see \n and get a non blank line
+    inChrP = &firstCh[0];      // GNxtCh will see \n and get a non blank line
     blockDepth = 1;
     procChains[1] = 0;
     GNxtCh();               // get the first char
