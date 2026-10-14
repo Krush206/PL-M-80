@@ -74,7 +74,7 @@ static void Sub_3F8B()
     OpenF(&tx1File, 3);
     if (XREF || IXREF || SYMBOLS)
     {
-        Fwrite(&xrfFile, "\0", 1);
+        Fwrite(&xrfFile, (pointer)"\0", 1);
         Fflush(&xrfFile);
         CloseF(&xrfFile);
     }
