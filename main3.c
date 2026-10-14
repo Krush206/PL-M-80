@@ -111,7 +111,7 @@ static void Sub_4105()
     if (!standAlone)
         return;
 
-    Fwrite(&tx1File, "\xA4", 1);
+    Fwrite(&tx1File, (pointer)"\xA4", 1);
     Fwrite(&tx1File, (pointer)&procInfo[1], 2);
     curInfoP = procInfo[1] + botInfo;
     p = w7197 - GetLinkVal();
@@ -189,7 +189,7 @@ static void Sub_436C()
 {
     pointer p;
     word q, r, s;
-    byte i, j, k, m, t[6];
+    byte i, j, k, t[6];
 
     s = 0;
     curInfoP = botInfo + 2;
@@ -262,7 +262,7 @@ static void Sub_436C()
                 s = s + 1;
                 if (((rec_t *)rec18)->len + 8 >= 299)
                     WriteRec(rec18, 0);
-                m = Num2Asc(k, 0xfc, 10, &t[2]);
+                (void)Num2Asc(k, 0xfc, 10, &t[2]);
                 Sub_48BA(rec18, 0, 6, t);
                 RecAddByte(rec18, 0, 0);
             }
@@ -303,7 +303,7 @@ static void Sub_46B7()
 static void Sub_4746()
 {
     if (b7199 || IXREF) {
-        Fwrite(&tx1File, "\x9c", 1);
+        Fwrite(&tx1File, (pointer)"\x9c", 1);
         Fflush(&tx1File);
         Rewind(&tx1File);
         CloseF(&nmsFile);
