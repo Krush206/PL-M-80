@@ -36,40 +36,40 @@ void LstModuleInfo()
             p = r;
     }
     SetSkipLst(3);
-    Xputstr2cLst("MODULE INFORMATION:", 0);
+    Xputstr2cLst((pointer)"MODULE INFORMATION:", 0);
     NewLineLst();
     SetSkipLst(1);
     TabLst(5);
-    Xputstr2cLst("CODE AREA SIZE     = ", 0);
+    Xputstr2cLst((pointer)"CODE AREA SIZE     = ", 0);
     XnumLst(csegSize, 0xFC, 0xF0);
     TabLst(2);
     XnumLst(csegSize, 5, 0xF6);
     NewLineLst();
     TabLst(5);
-    Xputstr2cLst("VARIABLE AREA SIZE = ", 0);
+    Xputstr2cLst((pointer)"VARIABLE AREA SIZE = ", 0);
     XnumLst(dsegSize, 0xFC, 0xF0);
     TabLst(2);
     XnumLst(dsegSize, 5, 0xF6);
     NewLineLst();
     TabLst(5);
-    Xputstr2cLst("MAXIMUM STACK SIZE = ", 0);
+    Xputstr2cLst((pointer)"MAXIMUM STACK SIZE = ", 0);
     XnumLst(p, 0xFC, 0xF0);
     TabLst(2);
     XnumLst(p, 5, 0xF6);
     NewLineLst();
     TabLst(5);
     XnumLst(linesRead, 0, 0xA);
-    Xputstr2cLst(" LINES READ", 0);
+    Xputstr2cLst((pointer)" LINES READ", 0);
     NewLineLst();
     TabLst(5);
     XnumLst(programErrCnt, 0, 0xA);
-    Xputstr2cLst(" PROGRAM ERROR", 0);
+    Xputstr2cLst((pointer)" PROGRAM ERROR", 0);
     if (programErrCnt != 1)
-        Xputstr2cLst("S", 0);
+        Xputstr2cLst((pointer)"S", 0);
 
     NewLineLst();
     SetSkipLst(1);
-    Xputstr2cLst("END OF PL/M-80 COMPILATION", 0);
+    Xputstr2cLst((pointer)"END OF PL/M-80 COMPILATION", 0);
     NewLineLst();
     FlushLstBuf();
     CloseF(&lstFil);
