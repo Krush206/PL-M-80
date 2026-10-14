@@ -318,7 +318,7 @@ static word MapFile(osfile_t *osfileP, const char *isisPath)
             fprintf(stderr, "No mapping for :%s:\n", deviceMap[info.deviceId].dev);
             return ERROR_NOTREADY;
         }
-        snprintf(osfileP->name, sizeof osfileP->name, "%s", src);
+        snprintf((char *)osfileP->name, sizeof osfileP->name, "%s", src);
         return ERROR_SUCCESS;
     }
 
@@ -350,10 +350,10 @@ static word MapFile(osfile_t *osfileP, const char *isisPath)
     }
 
     osfileP->name[0] = 0;
-    if (dir[0] != '/' && addPart(osfileP->name, sizeof osfileP->name, src) != 0)
+    if (dir[0] != '/' && addPart((char *)osfileP->name, sizeof osfileP->name, src) != 0)
         return ERROR_BADFILENAME;
-    if (addPart(osfileP->name, sizeof osfileP->name, dir) != 0 ||
-        addPart(osfileP->name, sizeof osfileP->name, base) != 0)
+    if (addPart((char *)osfileP->name, sizeof osfileP->name, dir) != 0 ||
+        addPart((char *)osfileP->name, sizeof osfileP->name, base) != 0)
         return ERROR_BADFILENAME;
 
     /* Unix: record the other place this file may be found when reading.
@@ -449,7 +449,7 @@ int main(int argc, char **argv)
     (void)_setmode(_fileno(stdout), O_BINARY);
 #endif
     /* find program name */
-    for (progname = argv[0]; s = strpbrk(progname, ":/\\"); progname = s + 1)
+    for (progname = argv[0]; (s = strpbrk(progname, ":/\\")); progname = s + 1)
         ;
     /* only allow alpha numeric char names otherwise it may confuse isis program */
     /* .exe is also excluded*/
@@ -581,10 +581,10 @@ void Delete(pointer pathP, wpointer statusP)
 {
     osfile_t osfile;
 
-    if ((*statusP = MapFile(&osfile, pathP)) == ERROR_SUCCESS) {
+    if ((*statusP = MapFile(&osfile, (const char *)pathP)) == ERROR_SUCCESS) {
         if (!(osfile.modes & RANDOM_ACCESS))
             *statusP = ERROR_ISDEVICE;
-        else if (unlink(osfile.name) < 0) {
+        else if (unlink((const char *)osfile.name) < 0) {
             if (errno == EACCES)
                 *statusP = ERROR_PERMISSIONS;
             else if (errno == ENOENT)
@@ -746,7 +746,7 @@ void Open(wpointer connP, pointer pathP, word access, word echo, wpointer status
     int handle;
 
     *connP = -1;                // unused conn
-    if ((*statusP = MapFile(&osfile, pathP)) != ERROR_SUCCESS)
+    if ((*statusP = MapFile(&osfile, (const char *)pathP)) != ERROR_SUCCESS)
         return;
 
     switch (access) {
@@ -814,7 +814,7 @@ void Open(wpointer connP, pointer pathP, word access, word echo, wpointer status
     else {
         aft[handle].fd = conn;
         aft[handle].mode = access + (osfile.modes & RANDOM_ACCESS);
-        aft[handle].text = textOut(osfile.name);
+        aft[handle].text = textOut((const char *)osfile.name);
         aft[handle].pendCR = 0;
         *connP = handle;
     }
@@ -1015,13 +1015,13 @@ void Rename(pointer oldP, pointer newP, wpointer statusP)
 {
     osfile_t oldFile, newFile;
 
-    if ((*statusP = MapFile(&oldFile, oldP)) != ERROR_SUCCESS || (*statusP = MapFile(&newFile, newP)) != ERROR_SUCCESS)
+    if ((*statusP = MapFile(&oldFile, (const char *)oldP)) != ERROR_SUCCESS || (*statusP = MapFile(&newFile, (const char *)newP)) != ERROR_SUCCESS)
         return;
     if (oldFile.deviceId != newFile.deviceId)
         *statusP = ERROR_RENACROSS;
     else if ((oldFile.modes & RANDOM_ACCESS) == 0)
         *statusP = ERROR_ISDEVICE;
-    else if (rename(oldFile.name, newFile.name) != 0)
+    else if (rename((const char *)oldFile.name, (const char *)newFile.name) != 0)
         switch (errno) {
         case EACCES: *statusP = ERROR_EXISTS; break;
         case ENOENT: *statusP = ERROR_FILENOTFOUND; break;
@@ -1033,7 +1033,7 @@ void Rename(pointer oldP, pointer newP, wpointer statusP)
 
 void Spath(pointer pathP, spath_t *infoP, wpointer statusP)
 {
-    if ((*statusP = ParseIsisName(infoP, pathP)) != ERROR_SUCCESS)
+    if ((*statusP = ParseIsisName(infoP, (const char *)pathP)) != ERROR_SUCCESS)
         return;
     if (infoP->deviceType == 3)
         infoP->driveType = 4;
@@ -1045,5 +1045,5 @@ FILE *Fopen(char *isisPath, char *mode)
     osfile_t fname;
     if (MapFile(&fname, isisPath) != ERROR_SUCCESS)
         return NULL;
-    return fopen(fname.name, mode);
+    return fopen((const char *)fname.name, mode);
 }
