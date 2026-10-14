@@ -275,7 +275,7 @@ void RdTx1Item()
 
     Fread(&tx1File, (pointer)&tx1Item, 1);      // read the lex item type
     tx1ItemLen = tx1ItemLengths[tx1Item.type];  // get the size supplementary information
-    if (tx1ItemLen != 0)
+    if (tx1ItemLen != 0) {
         if (tx1ItemLen != 255) {                /* i.e. not a string */
             Fread(&tx1File, (pointer)tx1Item.dataw, tx1ItemLen);    // read the words of data
         } else {
@@ -283,6 +283,7 @@ void RdTx1Item()
             tx1ItemLen = tx1Item.dataw[0];
             Fread(&tx1File, (pointer)&tx1Item.dataw[1], tx1Item.dataw[0]);  // read the string itself
         }
+    }
     tx1Aux1 = tx1Aux1Map[tx1Item.type];     // ?precedence
     tx1Aux2 = tx1Aux2Map[tx1Item.type];     // ?flags
 }
