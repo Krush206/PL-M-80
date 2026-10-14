@@ -81,7 +81,7 @@ void FatlIO(file_t *fileP, word errNum)
     xFindErrStr(errNum);
     if (slen != 0 )
     {
-        PrintStr("--", 2);
+        PrintStr((pointer)"--", 2);
         PrintStr(&errStrTable[off], (byte)slen);
     }
     PrintStr(aTerminate, Length(aTerminate));
