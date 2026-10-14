@@ -216,7 +216,7 @@ static void Sub_8ECD(byte arg1b, byte arg2b)
 
 static void Sub_8DCD()
 {
-    byte h, i, j, k, m, n;
+    byte h = 0, i = 0, j, k, m, n;
     word idx;
 
     j = 198;
