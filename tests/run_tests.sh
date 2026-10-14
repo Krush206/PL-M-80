@@ -224,6 +224,23 @@ check ":F1: honoured via environment" test -f "$run/hello.lst"
 rc=$?
 check "unmapped device falls back to cwd" test "$rc" -eq 0
 
+echo "== z80asm output"
+run="$TMP/z80asm"
+mkdir -p "$run"
+cp "$TMP/hello.plm" "$run/"
+( cd "$run" && "$PLM" hello.plm ) >/dev/null 2>&1
+check "z80 assembly produced alongside object" test -f "$run/hello.asm"
+rm -f "$run/hello.asm" "$run/hello.obj"
+( cd "$run" && "$PLM" hello.plm noobject ) >/dev/null 2>&1
+not_check "NOOBJECT suppresses z80 assembly" test -f "$run/hello.asm"
+( cd "$run" && "$PLM" hello.plm ) >/dev/null 2>&1
+if command -v z80asm >/dev/null 2>&1; then
+    ( cd "$run" && z80asm -o hello.bin hello.asm ) >/dev/null 2>&1
+    check "z80asm assembles the generated output" test -f "$run/hello.bin"
+else
+    ok "z80asm assembler check skipped (z80asm not installed)"
+fi
+
 echo "== error messages"
 run="$TMP/err"
 mkdir -p "$run"
