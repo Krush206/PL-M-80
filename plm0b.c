@@ -402,13 +402,15 @@ static byte GetLogical()
     if (tknLen == 0 && chrClass == CC_NEWLINE)
         return 0;
     if (tknLen == 2) {
-        if (Strncmp(optStrValP, "OR", 2) == 0)
+        if (Strncmp(optStrValP, (pointer)"OR", 2) == 0) {
             return 1;
-    } else if (tknLen == 3)
-        if (Strncmp(optStrValP, "AND", 3) == 0)
+        }
+    } else if (tknLen == 3) {
+        if (Strncmp(optStrValP, (pointer)"AND", 3) == 0)
             return 2;
-        else if (Strncmp(optStrValP, "XOR", 3) == 0)
+        else if (Strncmp(optStrValP, (pointer)"XOR", 3) == 0)
             return 3;
+    }
 
     BadCmdTail(ERR185); /* MISSING OPERATOR IN CONDITIONAL COMPILATION Expression */
     SkipToRPARorEOL();
@@ -451,7 +453,7 @@ static byte ChkNot()    // checks for potentially multiple NOT prefixes
     while ((1)) {
         tmp = curChP - 1;
         ParseId(3);
-        if (tknLen != 3 || Strncmp(optStrValP, "NOT", 3) != 0) {
+        if (tknLen != 3 || Strncmp(optStrValP, (pointer)"NOT", 3) != 0) {
             curChP = tmp;
             return notStatus;
         }
@@ -631,9 +633,9 @@ static void OptIXRef()
 {
     AcceptFileName();
     if (tknLen != 0)
-        InitF(&ixiFile, "IXREF ", optStrValP);
+        InitF(&ixiFile, (pointer)"IXREF ", optStrValP);
     else
-        InitF(&ixiFile, "IXREF ", ixiFileName);
+        InitF(&ixiFile, (pointer)"IXREF ", ixiFileName);
     IXREFSet = true;
     IXREF = true;
     OpenF(&ixiFile, 2);
@@ -644,9 +646,9 @@ static void OptObject()
 {
     AcceptFileName();
     if (tknLen != 0)
-        InitF(&objFile, "OBJECT", optStrValP);
+        InitF(&objFile, (pointer)"OBJECT", optStrValP);
     else
-        InitF(&objFile, "OBJECT", objFileName);
+        InitF(&objFile, (pointer)"OBJECT", objFileName);
     objBlk = objByte = 0;
     OBJECT = true;
     OBJECTSet = true;
@@ -662,11 +664,12 @@ static void OptInclude()
         return;
     }
     if (optFileName[0] == ':') {
-        if (optFileName[1] != 'F')
+        if (optFileName[1] != 'F') {
             if (offFirstChM1 != 0)
                 Fatal(errNotDisk, Length(errNotDisk));
             else
                 FatalError(ERR98);  /* INCLUDE FILE IS not A DISKETTE FILE */
+        }
     }
     if (srcFileIdx >= 55)
         SyntaxError(ERR13); /* LIMIT EXCEEDED: INCLUDE NESTING */
@@ -676,7 +679,7 @@ static void OptInclude()
         srcFileIdx = srcFileIdx + 11;
         memmove(&srcFileTable[srcFileIdx], optStrValP, 18);   /* the padded name, incl any spaces */
         CloseF(&srcFil);
-        InitF(&srcFil, "SOURCE", optStrValP);
+        InitF(&srcFil, (pointer)"SOURCE", optStrValP);
         OpenF(&srcFil, 1);
         offCurCh = offLastCh;
         WrByte(L_INCLUDE);
@@ -699,9 +702,9 @@ static void OptPrint()
         BadCmdTail(ERR16);  /* ILLEGAL PRINT CONTROL */
     else {
         if (tknLen != 0)
-            InitF(&lstFil, "LIST ", optStrValP);
+            InitF(&lstFil, (pointer)"LIST ", optStrValP);
         else
-            InitF(&lstFil, "PRINT ", lstFileName);
+            InitF(&lstFil, (pointer)"PRINT ", lstFileName);
         PRINTSet = true;
     }
     PRINT = true;
@@ -747,7 +750,7 @@ static pointer lFname;
 
 static void AcceptRangeChrs(byte lch, byte hch)
 {
-    if (isOK)
+    if (isOK) {
         if (*curChP < lch || hch < *curChP) {
             BadCmdTail(ERR12);  /* INVALID CONTROL PARAMETER */
             SkipToRPARorEOL();
@@ -757,6 +760,7 @@ static void AcceptRangeChrs(byte lch, byte hch)
             lFname = lFname + 1;
             NxtCh();
         }
+    }
 }
 
 static bool AcceptDrive(pointer fname, byte follow)
@@ -1053,16 +1057,17 @@ static void ChkEndSkipping(pointer pch)
         NxtCh();
         SkipWhite();
         GetToken();
-        if (tknLen == 2 && Strncmp(optStrValP, "IF", 2) == 0)   // nested IF
+        if (tknLen == 2 && Strncmp(optStrValP, (pointer)"IF", 2) == 0)   // nested IF
             ifDepth++;
-        else if (tknLen == 5 && Strncmp(optStrValP, "ENDIF", 5) == 0) {
+        else if (tknLen == 5 && Strncmp(optStrValP, (pointer)"ENDIF", 5) == 0) {
             if (--ifDepth < skippingIfDepth)                  // end of skipping
                 skippingCOND = false;
-        } else if (skippingIfDepth == ifDepth && inIFpart)    // else/elseif at same level as initial IF
-            if (tknLen == 4 && Strncmp(optStrValP, "ELSE", 4) == 0)
+        } else if (skippingIfDepth == ifDepth && inIFpart) {  // else/elseif at same level as initial IF
+            if (tknLen == 4 && Strncmp(optStrValP, (pointer)"ELSE", 4) == 0)
                 skippingCOND = false;                         // else so now not skipping
-            else if (tknLen == 6 && Strncmp(optStrValP, "ELSEIF", 6) == 0)
+            else if (tknLen == 6 && Strncmp(optStrValP, (pointer)"ELSEIF", 6) == 0)
                 skippingCOND = !ParseIfCond();                // still skipping if condition false
+        }
         if (!skippingCOND)          // no longer skipping so record any change of listing status
             if (!COND)
                 if (LIST)
@@ -1175,12 +1180,12 @@ static void GetCodeLine()
         } else if (srcFileIdx < 11) {       // EOF at end of main file
             if (ifDepth != 0)               // oops we are nested (error code seems to be incorrect)
                 SyntaxError(ERR188);        /* MISPLACED RESTORE OPTION */
-            inChrP = "/*'/**/EOF   ";       // string to make sure any comments, strings are closed and EOF
+            inChrP = (pointer)"/*'/**/EOF   ";       // string to make sure any comments, strings are closed and EOF
             return;
         } else {
             CloseF(&srcFil);                // close nested file & reload caller file at saved position
             srcFileIdx = srcFileIdx - 11;
-            InitF(&srcFil, "SOURCE", (pointer)&srcFileTable[srcFileIdx]);
+            InitF(&srcFil, (pointer)"SOURCE", (pointer)&srcFileTable[srcFileIdx]);
             OpenF(&srcFil, 1);
             SeekF(&srcFil, (loc_t *)&srcFileTable[srcFileIdx + 9]);
             offCurCh = offLastCh;           // force buffer reload
