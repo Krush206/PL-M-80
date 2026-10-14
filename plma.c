@@ -80,8 +80,8 @@ static bool TestToken(pointer str, byte len)
 
 static void SkipAlphaNum()
 {
-    while ('A' <= *cmdTextP && *cmdTextP <= 'Z' || 'a' <= *cmdTextP && *cmdTextP <= 'z'
-                || '0' <= *cmdTextP && *cmdTextP <= '9' || *cmdTextP == '_')
+    while (('A' <= *cmdTextP && *cmdTextP <= 'Z') || ('a' <= *cmdTextP && *cmdTextP <= 'z')
+                || ('0' <= *cmdTextP && *cmdTextP <= '9') || *cmdTextP == '_')
         cmdTextP++;
 } /* SkipAlphaNum() */
 
@@ -135,7 +135,7 @@ static void GetCmdLine()
         cmdLineP = startCmdLineP;
         return;
     extend:
-        PrintStr("**", 2);
+        PrintStr((pointer)"**", 2);
     }
 } /* GetCmdLine() */
 
@@ -251,7 +251,7 @@ static void ParseSrcFileName()
     memcpy(fname, fullName, nameLen);
     fname[nameLen] = 0;
     strcat(fname, "\n");
-    PrintStr(fname, strlen(fname));
+    PrintStr((pointer)fname, strlen(fname));
 
     dev[0] = 'F';
     dev[1] = '0';
@@ -337,25 +337,25 @@ static void InitFilesAndDefaults()
     memset(ixiFileName, ' ', FILE_NAME_LEN);
     memmove(ixiFileName, srcStemName, srcStemLen);
     memmove(&ixiFileName[srcStemLen], aIxi, 4);
-    InitF(&ixiFile, "IXREF ", ixiFileName);
+    InitF(&ixiFile, (pointer)"IXREF ", ixiFileName);
     objBlk = objByte = 0;
     memset(objFileName, ' ', FILE_NAME_LEN);
     memmove(objFileName, srcStemName, srcStemLen);
     memmove(&objFileName[srcStemLen], aObj, 4);
-    InitF(&objFile, "OBJECT", objFileName);
+    InitF(&objFile, (pointer)"OBJECT", objFileName);
     memset(asmFileName, ' ', FILE_NAME_LEN);
     memmove(asmFileName, srcStemName, srcStemLen);
     memmove(&asmFileName[srcStemLen], aAsm, 4);
-    InitF(&asmFile, "ASM   ", asmFileName);
+    InitF(&asmFile, (pointer)"ASM   ", asmFileName);
     memset(lstFileName, ' ', FILE_NAME_LEN);
     memmove(lstFileName, srcStemName, srcStemLen);
     memmove(&lstFileName[srcStemLen], aLst, 4);
-    InitF(&lstFil, "LIST ", lstFileName);
-    InitF(&tx1File, "UT1 ", ":F1:PLMTX1.TMP ");
-    InitF(&tx2File, "UT2 ", ":F1:PLMTX2.TMP ");
-    InitF(&atFile, "AT  ", ":F1:PLMAT.TMP ");
-    InitF(&nmsFile, "NAMES ", ":F1:PLMNMS.TMP ");
-    InitF(&xrfFile, "XREF ", ":F1:PLMXRF.TMP ");
+    InitF(&lstFil, (pointer)"LIST ", lstFileName);
+    InitF(&tx1File, (pointer)"UT1 ", (pointer)":F1:PLMTX1.TMP ");
+    InitF(&tx2File, (pointer)"UT2 ", (pointer)":F1:PLMTX2.TMP ");
+    InitF(&atFile, (pointer)"AT  ", (pointer)":F1:PLMAT.TMP ");
+    InitF(&nmsFile, (pointer)"NAMES ", (pointer)":F1:PLMNMS.TMP ");
+    InitF(&xrfFile, (pointer)"XREF ", (pointer)":F1:PLMXRF.TMP ");
     IXREF = false;
     IXREFSet = false;
     PRINT = true;
@@ -367,12 +367,12 @@ static void InitFilesAndDefaults()
     OBJECT = true;
     OBJECTSet = true;
     OPTIMIZE = true;
-    SetDate(" ", 1);
+    SetDate((pointer)" ", 1);
     SetPageLen(57);
     SetMarkerInfo(20, '-', 21);
     SetPageNo(0);
     SetMarginAndTabW(0xFF, 4);
-    SetTitle(" ", 1);
+    SetTitle((pointer)" ", 1);
     SetPageWidth(120);
 } /* InitFilesAndDefaults() */
 
@@ -394,7 +394,7 @@ void SignOnAndGetSourceName()
     memset(&xrfFile, 0, sizeof(file_t));
     memset(&ixiFile, 0, sizeof(file_t));
     //
-    InitF(&conFile, "CONSOL", ":CI: ");
+    InitF(&conFile, (pointer)"CONSOL", (pointer)":CI: ");
     OpenF(&conFile, 1);
     topMem = MemCk() - 12;
     if (topMem < 0xC000)
@@ -402,7 +402,7 @@ void SignOnAndGetSourceName()
     GetCmdLine();
     PrintStr(signonMsg, Length(signonMsg));
     PrintStr(szVersion, 4);
-    PrintStr("\r\n", 2);
+    PrintStr((pointer)"\r\n", 2);
     cmdTextP = &cmdLineP->pstr[1];
     blkSize1 = topMem - blkSize1 - 256;
     blkSize2 = topMem - blkSize2 - 256;
