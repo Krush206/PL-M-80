@@ -34,6 +34,7 @@ static byte signonMsg[] = "\r\nISIS-II PL/M-80 COMPILER ";
 static byte noMemMsg[] = "NOT ENOUGH MEMORY FOR A COMPILATION";
 static byte aIxi[] = ".IXI";
 static byte aObj[] = ".OBJ";
+static byte aAsm[] = ".ASM";
 static byte aLst[] = ".LST";
 static byte aInvocationComm[] = "INVOCATION COMMAND DOES NOT END WITH <CR><LF>";
 static byte aIncorrectDevice[] = "INCORRECT DEVICE SPEC";
@@ -342,6 +343,10 @@ static void InitFilesAndDefaults()
     memmove(objFileName, srcStemName, srcStemLen);
     memmove(&objFileName[srcStemLen], aObj, 4);
     InitF(&objFile, "OBJECT", objFileName);
+    memset(asmFileName, ' ', FILE_NAME_LEN);
+    memmove(asmFileName, srcStemName, srcStemLen);
+    memmove(&asmFileName[srcStemLen], aAsm, 4);
+    InitF(&asmFile, "ASM   ", asmFileName);
     memset(lstFileName, ' ', FILE_NAME_LEN);
     memmove(lstFileName, srcStemName, srcStemLen);
     memmove(&lstFileName[srcStemLen], aLst, 4);
@@ -380,6 +385,7 @@ void SignOnAndGetSourceName()
     memset(&srcFil , 0, sizeof(file_t));
     memset(&lstFil , 0, sizeof(file_t));
     memset(&objFile, 0, sizeof(file_t));
+    memset(&asmFile, 0, sizeof(file_t));
     memset(&conFile, 0, sizeof(file_t));
     memset(&tx1File, 0, sizeof(file_t));
     memset(&tx2File, 0, sizeof(file_t));
