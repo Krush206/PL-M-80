@@ -67,6 +67,8 @@ void Sub_404A()
     b7AD9 = PRINT | OBJECT;
     if (OBJECT)
         DeletF(&objFile);
+    if (OBJECT)
+        DeletF(&asmFile);
     if (! lfOpen && PRINTSet) {
         DeletF(&lstFil);
         PRINTSet = false;
