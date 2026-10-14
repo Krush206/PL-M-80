@@ -181,7 +181,7 @@ static void Sub_719D()
     standAlone = haveModuleLevelUnit;
 
     while (curInfoP != 0) {
-        if (GetType() >= BYTE_T && GetType() <= STRUCT_T
+        if ((GetType() >= BYTE_T && GetType() <= STRUCT_T)
             || GetType() == PROC_T || GetType() == LABEL_T)
         {
             if (TestInfoFlag(F_EXTERNAL))
