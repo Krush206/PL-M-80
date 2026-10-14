@@ -40,25 +40,25 @@ static void Sub_3FC8()
 {
     if (PRINT) {
         NewPageNextChLst();
-        Xputstr2cLst("ISIS-II PL/M-80 ", 0);
+        Xputstr2cLst((pointer)"ISIS-II PL/M-80 ", 0);
         XwrnstrLst(szVersion, 4);
-        Xputstr2cLst(" COMPILATION OF MODULE ", 0);
+        Xputstr2cLst((pointer)" COMPILATION OF MODULE ", 0);
         curInfoP = botInfo + procInfo[1];
         curSymbolP = GetSymbol();
         if (curSymbolP != 0)
             XwrnstrLst(&SymbolP(curSymbolP)->name[1], SymbolP(curSymbolP)->name[0]);
         NewLineLst();
         if (OBJECT) {
-            Xputstr2cLst("OBJECT MODULE PLACED IN ", 0);
+            Xputstr2cLst((pointer)"OBJECT MODULE PLACED IN ", 0);
             Xputstr2cLst(objFile.fNam, ' ');
         }
         else
-            Xputstr2cLst("NO OBJECT MODULE REQUESTED", 0);
+            Xputstr2cLst((pointer)"NO OBJECT MODULE REQUESTED", 0);
 
         NewLineLst();
         if (cmdLineCaptured == 1)
         {
-            Xputstr2cLst("COMPILER INVOKED BY:  ", 0);
+            Xputstr2cLst((pointer)"COMPILER INVOKED BY:  ", 0);
             cmdLineP = startCmdLineP;
             while (cmdLineP != NULL) {
                 TabLst(-23);
@@ -86,7 +86,7 @@ void Sub_408B()
     stmtNo = 0;
     if (PRINT) {
         srcFileIdx = 0;
-        InitF(&srcFil, "SOURCE", (pointer)&srcFileTable[srcFileIdx]);
+        InitF(&srcFil, (pointer)"SOURCE", (pointer)&srcFileTable[srcFileIdx]);
         OpenF(&srcFil, 1);
     }
 
