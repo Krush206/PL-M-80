@@ -198,12 +198,12 @@ void DoToRepeat()
         curBlk.blk = pos / 128;
         curBlk.byt = pos % 128;
         SeekF(&tx1File, &curBlk);
-        ReadF(&tx1File, &buf, 1, &tx1File.actual);
+        ReadF(&tx1File, (pointer)&buf, 1, &tx1File.actual);
         if (tx1File.actual)
         {
             buf = L_REPEAT;
             SeekF(&tx1File, &curBlk);
-            WriteF(&tx1File, &buf, 1);
+            WriteF(&tx1File, (pointer)&buf, 1);
         } else
             FatalError(ERR214); /* COMPILER ERROR: OPERAND CANNOT BE TRANSFORMED */
 
@@ -226,7 +226,7 @@ void CreateTx1File()
 
 void WriteTx1(pointer buf, word len)
 {
-    if (tx1File.aftn == 0)
+    if (tx1File.aftn == 0) {
         if (tx1File.curoff > 1024)
             CreateTx1File();
         else {
@@ -234,7 +234,8 @@ void WriteTx1(pointer buf, word len)
             tx1File.curoff = tx1File.curoff + len;
             return;
         }
-        Fwrite(&tx1File, buf, len);
+    }
+    Fwrite(&tx1File, buf, len);
 } /* WriteTx1() */
 
 void RewindTx1()
@@ -309,8 +310,8 @@ void FatalError_ov0(byte err)
     hasErrors = true;
     if (state != 20) {
         if (err == ERR83)       /* LIMIT EXCEEDED: DYNAMIC STORAGE */
-            Fatal("DYNAMIC STORAGE OVERFLOW", 24);
-        Fatal("UNKNOWN FATAL ERROR", 19);
+            Fatal((pointer)"DYNAMIC STORAGE OVERFLOW", 24);
+        Fatal((pointer)"UNKNOWN FATAL ERROR", 19);
     }
     TokenErrorAt(err);
     fatalErrorCode = err;
