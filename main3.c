@@ -51,6 +51,7 @@ static void Sub_3F3C()
         SekEnd(&objFile);
     }
     w7197 = csegSize;
+    Z80_Begin();
 }
 
 
@@ -292,6 +293,7 @@ static void Sub_46B7()
             WriteRec(rec6, 3);
             RecAddWord(rec24_1, 2, ((rec6_t *)rec6)->addr + 1);
             WriteRec(rec24_1, 2);
+            Z80_IntVec(((rec6_t *)rec6)->addr, GetLinkVal());
         }
     }
 }
@@ -340,7 +342,10 @@ word Start3()
         Sub_436C();
         Sub_46B7();
     }
+    Z80_AtPrescan();
     Sub_49F9();
+    Z80_DataVarEnd();
+    Z80_DataWalk();
     Sub_4746();
     if (b7199)
         return 4; // Chain(overlay[4]);
