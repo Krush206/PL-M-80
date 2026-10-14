@@ -210,6 +210,7 @@ static void Sub_4CAC()
         RecAddWord(rec6, 3, atFData.var.val);
         w7197 = w7197 + 2;
     }
+    Z80_DataValue(atFData.var.val);
 }
 
 static void Sub_4CF9()
@@ -271,6 +272,7 @@ static void Sub_4DA8()
         atFData.var.val = atFData.var.val + Sub_4984() * atFData.var.arrayIndex + GetLinkVal();
         if (TestInfoFlag(F_EXTERNAL)) {
             i = GetExternId();
+            Z80_DataSymRef(true, atFData.var.val);
             curInfoP = p;
             Sub_4908(rec20, 0x95, 4);
             Sub_4CAC();
@@ -297,6 +299,7 @@ static void Sub_4DA8()
             } else
                 j = 2;
 
+            Z80_DataSymRef(false, atFData.var.val);
             curInfoP = p;
             Sub_4908(q, 0x95, 2);
             Sub_4CAC();
@@ -342,6 +345,7 @@ static void Sub_4A31()
         b811D = true;
     }
 
+    Z80_DataVarBegin(((rec6_t *)rec6)->seg, w7197, b811D, w811E);
     Sub_4BF4();
     if (atFData.type == ATI_END) {
         Sub_4889();
@@ -379,7 +383,9 @@ void Sub_49F9()
             Fread(&atFile, (pointer)&atFData.infoP, 12);
         else if (atFData.type == ATI_DHDR)
             Sub_4A31();
-        else
+        else {
+            Z80_DataVarEnd();
             return;
+        }
     }
 }
