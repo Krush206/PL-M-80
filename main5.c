@@ -45,7 +45,7 @@ byte b3F0B = 0xFF;      /* ixi module header */
 void Sub_4121(pointer str)
 {
     NewLineLst();
-    Xputstr2cLst("*** WARNING -- ", 0);
+    Xputstr2cLst((pointer)"*** WARNING -- ", 0);
     Xputstr2cLst(str, 0);
     NewLineLst();
 }
@@ -60,7 +60,7 @@ void LoadDictionary()
         if (GetType() < MACRO_T && GetSymbol() != 0) {
             dictTopP = dictTopP + 2;
             if (dictTopP >= botSymbol) {
-                Sub_4121("INSUFFICIENT MEMORY FOR FULL DICTIONARY LISTING");
+                Sub_4121((pointer)"INSUFFICIENT MEMORY FOR FULL DICTIONARY LISTING");
                 return;
             }
             dictSize = dictSize + 1;
@@ -213,7 +213,7 @@ static void LoadXref()
             xrefItemP = w66D4 + 1;
             w66D4 = w66D4 + 4;
             if (w66D4 > botSymbol) {
-                Sub_4121("INSUFFICIENT MEMORY FOR FULL XREF PROCESSING");
+                Sub_4121((pointer)"INSUFFICIENT MEMORY FOR FULL XREF PROCESSING");
                 break;
             }
             WordP(xrefItemP)[0] = GetScope();
@@ -266,7 +266,7 @@ void PrepXref()
 
     w66D2 = dictTopP + 2;
     if (w66D2 >= botSymbol) {
-        Sub_4121("INSUFFICIENT MEMORY FOR ANY XREF PROCESSING");
+        Sub_4121((pointer)"INSUFFICIENT MEMORY FOR ANY XREF PROCESSING");
         return;
     }
     w66D4 = w66D2 - 1;
@@ -292,7 +292,7 @@ static void Sub_480A()
         NewLineLst();
         return;
     }
-    XwrnstrLst(": ", 2);
+    XwrnstrLst((pointer)": ", 2);
     p = 0;
 
     while (xrefItemP != 0) {
@@ -355,9 +355,9 @@ static void Sub_4921()
 
 static void Sub_499C()
 {
-    Xputstr2cLst(" EXTERNAL(", 0);
+    Xputstr2cLst((pointer)" EXTERNAL(", 0);
     XnumLst(GetExternId(), 0, 10);
-    XwrnstrLst(")", 1);
+    XwrnstrLst((pointer)")", 1);
 }
 
 
@@ -366,7 +366,7 @@ static void Sub_49BB()
     offset_t p, q, r;
 
     p = curInfoP;
-    Xputstr2cLst(" BASED(", 0);
+    Xputstr2cLst((pointer)" BASED(", 0);
     curInfoP = GetBaseOffset();
     if (TestInfoFlag(F_MEMBER)) {
         r = GetSymbol();
@@ -380,11 +380,11 @@ static void Sub_49BB()
     curSymbolP = q;
     XwrnstrLst(PstrP(curSymbolP)->str, PstrP(curSymbolP)->len);
     if (r != 0) {
-        XwrnstrLst(".", 1);
+        XwrnstrLst((pointer)".", 1);
         curSymbolP = r;
         XwrnstrLst(PstrP(curSymbolP)->str, PstrP(curSymbolP)->len);
     }
-    XwrnstrLst(")", 1);
+    XwrnstrLst((pointer)")", 1);
     curInfoP = p;
 }
 
@@ -395,10 +395,10 @@ static void Sub_4A42()
 
     p = curInfoP;
     curInfoP = GetParentOffset();
-    Xputstr2cLst(" MEMBER(", 0);
+    Xputstr2cLst((pointer)" MEMBER(", 0);
     curSymbolP = GetSymbol();
     XwrnstrLst(PstrP(curSymbolP)->str, PstrP(curSymbolP)->len);
-    XwrnstrLst(")", 1);
+    XwrnstrLst((pointer)")", 1);
     curInfoP = p;
 }
 
@@ -418,30 +418,30 @@ static void Sub_4A92()
     Sub_4921();
     Sub_48E2(GetLinkVal(), GetDimension2());
     Sub_48A7();
-    Xputstr2cLst("PROCEDURE", 0);
+    Xputstr2cLst((pointer)"PROCEDURE", 0);
     if (GetDataType() != 0) {
         if (GetDataType() == 2)
-            p = " BYTE";
+            p = (pointer)" BYTE";
         else
-            p = " ADDRESS";
+            p = (pointer)" ADDRESS";
         Xputstr2cLst(p, 0);
     }
     if (TestInfoFlag(F_PUBLIC))
-        Xputstr2cLst(" PUBLIC", 0);
+        Xputstr2cLst((pointer)" PUBLIC", 0);
 
     if (TestInfoFlag(F_EXTERNAL))
         Sub_499C();
 
     if (TestInfoFlag(F_REENTRANT))
-        Xputstr2cLst(" REENTRANT",0);
+        Xputstr2cLst((pointer)" REENTRANT",0);
 
     if (TestInfoFlag(F_INTERRUPT)) {
-        Xputstr2cLst(" INTERRUPT(", 0);
+        Xputstr2cLst((pointer)" INTERRUPT(", 0);
         XnumLst(GetIntrNo(), 0, 10);
-        XwrnstrLst(")", 1);
+        XwrnstrLst((pointer)")", 1);
     }
     if (! TestInfoFlag(F_EXTERNAL)) {
-        Xputstr2cLst(" STACK=", 0);
+        Xputstr2cLst((pointer)" STACK=", 0);
         XnumLst(GetBaseVal(), 0xfc, 0xf0);
     }
     Sub_480A();
@@ -471,34 +471,34 @@ static void Sub_4B4A(pointer str)
     if (TestInfoFlag(F_BASED))
         Sub_49BB();
     if (TestInfoFlag(F_ARRAY)) {
-        Xputstr2cLst(" ARRAY(", 0);
+        Xputstr2cLst((pointer)" ARRAY(", 0);
         XnumLst(GetDimension(), 0, 10);
-        XwrnstrLst(")", 1);
+        XwrnstrLst((pointer)")", 1);
     }
     if (TestInfoFlag(F_PUBLIC))
-        Xputstr2cLst(" PUBLIC", 0);
+        Xputstr2cLst((pointer)" PUBLIC", 0);
 
     if (TestInfoFlag(F_EXTERNAL))
         Sub_499C();
 
     if (TestInfoFlag(F_AT))
-        Xputstr2cLst(" AT", 0);
+        Xputstr2cLst((pointer)" AT", 0);
     if (TestInfoFlag(F_DATA))
-        Xputstr2cLst(" DATA", 0);
+        Xputstr2cLst((pointer)" DATA", 0);
     if (TestInfoFlag(F_INITIAL))
-        Xputstr2cLst(" INITIAL", 0);
+        Xputstr2cLst((pointer)" INITIAL", 0);
 
     if (TestInfoFlag(F_MEMBER))
         Sub_4A42();
 
     if (TestInfoFlag(F_PARAMETER))
-        Xputstr2cLst(" PARAMETER", 0);
+        Xputstr2cLst((pointer)" PARAMETER", 0);
 
     if (TestInfoFlag(F_AUTOMATIC))
-        Xputstr2cLst(" AUTOMATIC", 0);
+        Xputstr2cLst((pointer)" AUTOMATIC", 0);
 
     if (TestInfoFlag(F_ABSOLUTE))
-        Xputstr2cLst(" ABSOLUTE",0);
+        Xputstr2cLst((pointer)" ABSOLUTE",0);
 
     Sub_480A();
 }
@@ -512,13 +512,13 @@ static void Sub_4C84()
     }
     if (GetType() < MACRO_T)
         switch(GetType()) {
-        case 0: Sub_4A78("LITERALLY"); break;
-        case 1: Sub_4B4A("LABEL"); break;
-        case 2: Sub_4B4A("BYTE"); break;
-        case 3: Sub_4B4A("ADDRESS"); break;
-        case 4: Sub_4B4A("STRUCTURE"); break;
+        case 0: Sub_4A78((pointer)"LITERALLY"); break;
+        case 1: Sub_4B4A((pointer)"LABEL"); break;
+        case 2: Sub_4B4A((pointer)"BYTE"); break;
+        case 3: Sub_4B4A((pointer)"ADDRESS"); break;
+        case 4: Sub_4B4A((pointer)"STRUCTURE"); break;
         case 5: Sub_4A92(); break;
-        case 6: Sub_4A78("BUILTIN"); break;
+        case 6: Sub_4A78((pointer)"BUILTIN"); break;
         }
 } /* Sub_4C84() */
 
@@ -536,25 +536,25 @@ void PrintRefs()
     SetMarkerInfo(attribCol, '-', 3);
     NewPageNextChLst();
     if (XREF) {
-        Xputstr2cLst("CROSS-REFERENCE LISTING", 0);
+        Xputstr2cLst((pointer)"CROSS-REFERENCE LISTING", 0);
         NewLineLst();
         XwrnstrLst(dashes, 23);
         NewLineLst();
     } else {
-        Xputstr2cLst("SYMBOL LISTING", 0);
+        Xputstr2cLst((pointer)"SYMBOL LISTING", 0);
         NewLineLst();
         XwrnstrLst(dashes, 14);
         NewLineLst();
     }
     SetSkipLst(2);
     TabLst(-defnCol);
-    Xputstr2cLst(" DEFN", 0);
+    Xputstr2cLst((pointer)" DEFN", 0);
     TabLst(-addrCol);
-    Xputstr2cLst(" ADDR", 0);
+    Xputstr2cLst((pointer)" ADDR", 0);
     TabLst(-sizeCol);
-    Xputstr2cLst(" SIZE", 0);
+    Xputstr2cLst((pointer)" SIZE", 0);
     TabLst(-nameCol);
-    Xputstr2cLst("NAME, ATTRIBUTES, AND REFERENCES", 0);
+    Xputstr2cLst((pointer)"NAME, ATTRIBUTES, AND REFERENCES", 0);
     NewLineLst();
     TabLst(-defnCol);
     XwrnstrLst(dashes, 5);
@@ -611,7 +611,7 @@ void CreateIxrefFile()
     else
         j = 0;
     Sub_4EAA((pointer)&srcFileTable[j], 12);            /* fileName minus any :fx: */
-    Sub_4EAA("-------", 7);
+    Sub_4EAA((pointer)"-------", 7);
 
     for (p = 1; p <= dictSize; p++) {
         curInfoP = WordP(dictionaryP)[p];
