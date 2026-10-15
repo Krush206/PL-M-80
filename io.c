@@ -427,6 +427,46 @@ static int textOut(const char *name)
 
 
 
+/* Parse a -o address: Intel hex with H suffix (0100h), 0x hex, decimal.
+   Returns true and stores 0..0xFFFF in *out on success. */
+static bool parseOrgAddr(const char *s, word *out)
+{
+    size_t n = strlen(s);
+    unsigned long v;
+    char *end;
+    char buf[16];
+    size_t i;
+    if (n == 0 || n >= sizeof buf)
+        return false;
+    for (i = 0; i <= n; i++) {
+        char c = s[i];
+        if (c >= 'a' && c <= 'z')
+            c -= 'a' - 'A';
+        buf[i] = c;
+    }
+    if (buf[n - 1] == 'H') {
+        /* Intel hex demands a leading digit (as does z80asm) */
+        if (buf[0] < '0' || buf[0] > '9')
+            return false;
+        buf[n - 1] = 0;
+        v = strtoul(buf, &end, 16);
+        if (*end != 0)
+            return false;
+    } else if (buf[0] == '0' && (buf[1] == 'X' || buf[1] == 'x')) {
+        v = strtoul(buf + 2, &end, 16);
+        if (*end != 0 || end == buf + 2)
+            return false;
+    } else {
+        v = strtoul(buf, &end, 10);
+        if (*end != 0)
+            return false;
+    }
+    if (v > 0xFFFF)
+        return false;
+    *out = (word)v;
+    return true;
+}
+
 int main(int argc, char **argv)
 {
     int i;
@@ -460,6 +500,20 @@ int main(int argc, char **argv)
     len = strlen(_commandLine);
 
     for (i = 1; i < argc && len + strlen(argv[i]) + 1 < MAXLL - 2; i++) {       // add args if room
+            if (strcmp(argv[i], "-h") == 0) {
+                z80header = true;       // Sega Master System cartridge header
+                continue;
+            }
+            if (strncmp(argv[i], "-o", 2) == 0) {
+                const char *aval = argv[i][2] ? argv[i] + 2 :
+                    (i + 1 < argc ? argv[++i] : NULL);
+                if (!aval || !parseOrgAddr(aval, &z80orgAddr)) {
+                    fprintf(stderr, "plm80c: -o needs an address (e.g. -o 0100h)\n");
+                    return 2;
+                }
+                z80orgSet = true;       // initial org address of the .asm output
+                continue;
+            }
             len += strlen(argv[i]) + 1;
             strcat(_commandLine, " ");
             strcat(_commandLine, argv[i]);
