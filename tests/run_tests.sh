@@ -241,6 +241,53 @@ else
     ok "z80asm assembler check skipped (z80asm not installed)"
 fi
 
+echo "== z80asm options -o -h"
+run="$TMP/z80opt"
+mkdir -p "$run"
+cp "$TMP/hello.plm" "$run/"
+( cd "$run" && "$PLM" hello.plm -o 0100h ) >/dev/null 2>&1
+check "-o sets the org address" grep -q '^	org	100H' "$run/hello.asm"
+( cd "$run" && "$PLM" hello.plm -o xyz ) >/dev/null 2>&1
+rc=$?
+check "bad -o address exits nonzero" test "$rc" -ne 0
+( cd "$run" && "$PLM" hello.plm -h ) >/dev/null 2>&1
+check "-h adds the SMS header" grep -q 'TMR SEGA' "$run/hello.asm"
+if command -v z80asm >/dev/null 2>&1; then
+    ( cd "$run" && z80asm -o hello.bin hello.asm ) >/dev/null 2>&1
+    check "-h output assembles to a 32K ROM" test "$(wc -c < "$run/hello.bin")" -eq 32768
+    magic=$(dd if="$run/hello.bin" bs=1 skip=32752 count=8 2>/dev/null)
+    check "SMS magic sits at 7FF0" test "$magic" = "TMR SEGA"
+else
+    ok "z80asm header check skipped (z80asm not installed)"
+fi
+# -h must keep variables and the stack out of the read-only SMS ROM
+cat > "$run/smsvar.plm" <<'PLM'
+smsvar: do;
+declare i byte;
+do i = 0 to 3;
+    output(7fh) = i;
+end;
+end;
+PLM
+( cd "$run" && "$PLM" smsvar.plm -h ) >/dev/null 2>&1
+check "-h places variables in SMS RAM" \
+    grep -qE 'SMSVAR_I:[[:space:]]+equ[[:space:]]+0C000H' "$run/smsvar.asm"
+check "-h places the stack in SMS RAM" \
+    grep -qE 'SMSVAR_STACK_ORIGIN:[[:space:]]+equ[[:space:]]+0DFF0H' "$run/smsvar.asm"
+cat > "$run/smsinit.plm" <<'PLM'
+smsinit: do;
+declare t(2) byte initial (1, 2);
+output(7fh) = t(1);
+end;
+PLM
+( cd "$run" && "$PLM" smsinit.plm -h ) >/dev/null 2>&1
+check "-h keeps INITIAL bytes in ROM" \
+    grep -q 'SMSINIT_T_INIT:' "$run/smsinit.asm"
+check "-h defines INITIAL variables in RAM" \
+    grep -qE 'SMSINIT_T:[[:space:]]+equ[[:space:]]+0C000H' "$run/smsinit.asm"
+check "-h copies INITIAL data to RAM at startup" \
+    grep -q 'ldir' "$run/smsinit.asm"
+
 echo "== error messages"
 run="$TMP/err"
 mkdir -p "$run"
