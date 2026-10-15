@@ -74,6 +74,41 @@ static char z80modRaw[36];        /* module name as written, for the header */
 static word z80stackNeed = 16;
 static word z80dataBytes = 0; /* data-section bytes: code follows them */
 
+/* ---------------- Sega Master System (header) memory model ----------------
+ * With -h the output is a ROM image (0000-7FFF), but variables and the stack
+ * must be writeable: they are placed in work RAM (C000-DFFF) instead of
+ * behind the code.  Initialized variables keep their initial bytes in ROM
+ * and a small startup routine copies them into RAM. */
+#define Z80_SMS_RAM_BASE  0xC000
+#define Z80_SMS_STACK_TOP 0xDFF0
+static word z80ramNext = Z80_SMS_RAM_BASE;   /* next free RAM byte */
+typedef struct {
+    char *rom;      /* ROM label holding the initial bytes */
+    char *ram;      /* RAM label the code references */
+    word size;      /* number of bytes to copy */
+} z80init_t;
+static z80init_t *z80inits = NULL;
+static size_t z80initsN = 0, z80initsC = 0;
+
+static char *z80_strdup(const char *s);
+
+static void z80_init_add(const char *rom, const char *ram, word size)
+{
+    z80init_t *p;
+    if (z80initsN >= z80initsC) {
+        size_t nc = z80initsC ? z80initsC * 2 : 8;
+        p = realloc(z80inits, nc * sizeof *p);
+        if (!p)
+            return;
+        z80inits = p;
+        z80initsC = nc;
+    }
+    z80inits[z80initsN].rom = z80_strdup(rom ? rom : "");
+    z80inits[z80initsN].ram = z80_strdup(ram ? ram : "");
+    z80inits[z80initsN].size = size;
+    z80initsN++;
+}
+
 /* ---------------- output buffer (whole file, written at End) ---------------- */
 static char *z80out = NULL;
 static size_t z80outLen = 0, z80outCap = 0;
@@ -1646,6 +1681,22 @@ void Z80_Code(void)
     if (baseAddr == z80mainAddr && z80haveMain && !z80entryPlaced) {
         z80_put("ASM_START:\n");
         z80entryPlaced = true;
+        if (z80header && z80initsN > 0) {
+            /* copy initialized variables from ROM into SMS work RAM */
+            size_t c;
+            char h[16];
+            z80_put("\t; copy initialized data from ROM to RAM (SMS)\n");
+            for (c = 0; c < z80initsN; c++) {
+                z80_putf("\tld\thl,%s\n", z80inits[c].rom);
+                z80_putf("\tld\tde,%s\n", z80inits[c].ram);
+                z80_hex(h, z80inits[c].size);
+                z80_putf("\tld\tbc,%s\n", h);
+                z80_put("\tldir\n");
+            }
+            /* the routine sits before the translated code: shift its base */
+            z80codeBase += (word)(z80initsN * 11);
+            myAddr = (word)(z80codeBase + z80codePos);
+        }
     }
     ok = z80_translate(text, opBytes, opByteCnt, baseAddr, dstRec,
         out, sizeof out, &markTarget);
@@ -1776,12 +1827,12 @@ static void z80_dsym_text(zitem_t *it, char *out, size_t outsz)
 }
 
 /* ---------------- data flush (Start4, before code) ---------------- */
-static void z80_emit_data_var(zvar_t *v, zent_t *e)
+static void z80_emit_data_var(zvar_t *v, const char *label)
 {
     size_t i;
     char h[16];
     char ref[128];
-    z80_putf("%s:\n", e->label);
+    z80_putf("%s:\n", label);
     i = 0;
     while (i < v->nItems) {
         size_t run;
@@ -1956,7 +2007,31 @@ void Z80_DataFlush(void)
         z80_assign(e);
         if (!e->label)
             continue;
-        z80_emit_data_var(v, e);
+        if (z80header) {
+            /* variables live in SMS work RAM; only the initial bytes stay
+               in ROM (under a "<label>_INIT" label) and get copied at start */
+            char ra[16];
+            if (v->nItems == 0) {
+                word sz = v->size ? v->size : 1;
+                z80_hex(ra, z80ramNext);
+                z80_putf("%s:\tequ\t%s\n", e->label, ra);
+                z80ramNext += sz;
+            } else {
+                char romlab[200];
+                word before, sz;
+                snprintf(romlab, sizeof romlab, "%s_INIT", e->label);
+                before = z80dataBytes;
+                z80_emit_data_var(v, romlab);
+                sz = (word)(z80dataBytes - before);
+                z80_init_add(romlab, e->label, sz);
+                z80_hex(ra, z80ramNext);
+                z80_putf("%s:\tequ\t%s\n", e->label, ra);
+                z80ramNext += sz;
+            }
+            e->done = true;
+            continue;
+        }
+        z80_emit_data_var(v, e->label);
         e->done = true;
     }
     /* DS reservations (walk order) */
@@ -1971,8 +2046,15 @@ void Z80_DataFlush(void)
             continue;
         if (e->size == 0)
             e->size = 1;
-        z80_putf("%s:\n\tds\t%u\n", e->label, (unsigned)e->size);
-        z80dataBytes += e->size;
+        if (z80header) {
+            char ra[16];
+            z80_hex(ra, z80ramNext);
+            z80_putf("%s:\tequ\t%s\n", e->label, ra);
+            z80ramNext += e->size;
+        } else {
+            z80_putf("%s:\n\tds\t%u\n", e->label, (unsigned)e->size);
+            z80dataBytes += e->size;
+        }
         e->done = true;
     }
     /* aliases (equ), after everything they may reference */
@@ -2079,8 +2161,10 @@ void Z80_Begin(void)
     }
     CreatF(&asmFile, asmBuf, sizeof asmBuf, 2);
     z80active = true;
-    z80codeBase = z80haveMain ? 3 : 0;
+    z80codeBase = z80orgAddr + (z80haveMain ? 3 : 0);
     z80codePos = 0;
+    z80ramNext = Z80_SMS_RAM_BASE;
+    z80initsN = 0;
 }
 
 void Z80_End(void)
@@ -2099,9 +2183,51 @@ void Z80_End(void)
         return;
     }
     /* stack reservation */
-    z80_putf("\n; ---- stack ----\n%s_STACK:\n\tds\t%u\n%s_STACK_ORIGIN:\tequ\t%s_STACK+%u\n",
-        z80mod[0] ? z80mod : "M", (unsigned)z80stackNeed,
-        z80mod[0] ? z80mod : "M", z80mod[0] ? z80mod : "M", (unsigned)z80stackNeed);
+    if (z80header) {
+        /* SMS: the stack must be writeable, so it lives in RAM too */
+        char h[16];
+        z80_put("\n; ---- stack (Sega Master System work RAM) ----\n");
+        z80_hex(h, (word)(Z80_SMS_STACK_TOP - z80stackNeed));
+        z80_putf("%s_STACK:\tequ\t%s\n", z80mod[0] ? z80mod : "M", h);
+        z80_hex(h, (word)Z80_SMS_STACK_TOP);
+        z80_putf("%s_STACK_ORIGIN:\tequ\t%s\n", z80mod[0] ? z80mod : "M", h);
+        if (z80ramNext > (word)(Z80_SMS_STACK_TOP - z80stackNeed))
+            fprintf(stderr,
+                "warning: SMS variables reach %04XH, overlapping the stack"
+                " (from %04XH)\n",
+                (unsigned)(z80ramNext - 1),
+                (unsigned)(Z80_SMS_STACK_TOP - z80stackNeed));
+    } else {
+        z80_putf("\n; ---- stack ----\n%s_STACK:\n\tds\t%u\n%s_STACK_ORIGIN:\tequ\t%s_STACK+%u\n",
+            z80mod[0] ? z80mod : "M", (unsigned)z80stackNeed,
+            z80mod[0] ? z80mod : "M", z80mod[0] ? z80mod : "M", (unsigned)z80stackNeed);
+    }
+    if (z80header) {
+        /* Sega Master System cartridge header at absolute 7FF0H.
+           The image must fit below it; otherwise seek would silently
+           overwrite the program, so refuse loudly instead.  The stack and
+           variables are in RAM now, so only the code is measured. */
+        unsigned total = (unsigned)z80codeBase + z80codePos;
+        if (total > 0x7FF0) {
+            fprintf(stderr,
+                "plm80c: program too big for the SMS header"
+                " (%u bytes, max %u); .asm not written\n",
+                (unsigned)total, 0x7FF0);
+            CloseF(&asmFile);
+            DeletF(&asmFile);
+            errorLevel = 2;
+            return;
+        }
+        z80_put("\n; ---- Sega Master System cartridge header ----\n");
+        z80_put("\tseek\t7FF0H\n");
+        z80_put("\torg\t7FF0H\n");
+        z80_put("\tdb\t\"TMR SEGA\"\t; signature\n");
+        z80_put("\tdb\t0FFH,0FFH\t; reserved\n");
+        z80_put("\tdb\t0,0\t; CHECKSUM (big-endian): patch after assembly, see README\n");
+        z80_put("\tdb\t0,0\t; product code (big-endian BCD)\n");
+        z80_put("\tdb\t0\t; version\n");
+        z80_put("\tdb\t4CH\t; SMS Export, checksum range 0000-7FEF (32KB)\n");
+    }
     /* patch deferred `$` markers now that every address is final */
     {
         size_t m;
@@ -2149,11 +2275,16 @@ void Z80_End(void)
     off += (size_t)snprintf(hdr + off, sizeof hdr - off,
         "; %s.asm - Z80 assembly generated by the PL/M-80 compiler\n"
         "; Assemble with: z80asm -o %s.bin %s.asm\n"
-        "; No `org` is emitted so modules compose with include files\n"
-        "; (default origin is 0; prepend `org 100h` for CP/M).\n",
+        "; Without -o there is no `org` so modules compose with include files.\n"
+        "; Default origin is 0; use -o, e.g. -o 100h for CP/M.\n",
         z80modRaw[0] ? z80modRaw : "out",
         z80modRaw[0] ? z80modRaw : "out",
         z80modRaw[0] ? z80modRaw : "out");
+    if (z80orgSet) {
+        char orghex[16];
+        z80_hex(orghex, z80orgAddr);
+        off += (size_t)snprintf(hdr + off, sizeof hdr - off, "\torg\t%s\n", orghex);
+    }
     if (z80haveMain && z80entryPlaced)
         off += (size_t)snprintf(hdr + off, sizeof hdr - off, "\tjp\tASM_START\n");
     hlen = off;
