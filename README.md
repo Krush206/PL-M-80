@@ -111,6 +111,16 @@ origin 0.  If the program does not fit below the header the compiler
 refuses to write the `.asm` file (exit status 2); the `.obj`/`.lst` files
 are still produced.
 
+On the Master System the cartridge space (`0000-7FFF`) is read-only while
+work RAM (`C000-DFFF`) is writeable, so with `-h` the compiler places
+variables and the stack in RAM instead of behind the code: data labels are
+defined with `equ` starting at `C000H`, and `<mod>_STACK_ORIGIN` becomes
+`DFF0H` (the stack grows down towards the variables).  Variables declared
+with `INITIAL` keep their bytes in the ROM image and a short routine at
+`ASM_START` copies them into RAM before the program runs.  Always build the
+SMS target with `-h` — without it the data and stack land in ROM and any
+write, `CALL` or `RET` silently misbehaves on real hardware.
+
 Most emulators boot the ROM as-is; strict ones (and real hardware) also
 want a valid checksum.  Patch it after assembling (big-endian 16-bit sum
 of bytes `0000-7FEF`):
@@ -122,15 +132,10 @@ d[0x7FFA] = s >> 8; d[0x7FFB] = s & 0xFF
 open('game.sms','wb').write(d)"
 ```
 
-Two things remain application business.  First, the generated stack
-(`<mod>_STACK`, right behind the program) lives in ROM address space on
-the SMS, where pushes go nowhere: point `<mod>_STACK_ORIGIN` at RAM
-instead (e.g. replace the two stack lines with
-`GAME_STACK_ORIGIN: equ 0DFF0H`).  Second, the program starts at address
-0 with no BIOS services — bring your own VDP bring-up and put gameplay
-behind the `ASM_START` entry point.  Product code, version and region
-bytes in the header are compile-time constants in the `.asm` tail; edit
-them there if the defaults do not suit the release.
+The program starts at address 0 with no BIOS services — bring your own VDP
+bring-up and put gameplay behind the `ASM_START` entry point.  Product
+code, version and region bytes in the header are compile-time constants in
+the `.asm` tail; edit them there if the defaults do not suit the release.
 
 ## File naming rules
 
