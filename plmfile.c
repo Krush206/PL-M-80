@@ -129,13 +129,13 @@ void InitF(file_t *fileP, pointer sNam, pointer fNam)
 
     fileP->aftn = 0;
     memset(fileP->sNam, ' ', 6);
-    memset(fileP->fNam, ' ', 18);
+    memset(fileP->fNam, ' ', NAME_SLOT);
     CpyTill(sNam, fileP->sNam, 6, ' ');
     /* fNam is space padded, but a Unix file name may contain spaces of its
        own, so stop at the end of the string rather than at the first blank */
-    for (i = 0; i < 16 && fNam[i] != 0; i++)
+    for (i = 0; i < NAME_SLOT && fNam[i] != 0; i++)
         fileP->fNam[i] = fNam[i];
-    fileP->fNam[16] = 0;     /* the name is space padded - it still needs an end */
+    fileP->fNam[NAME_SLOT] = 0;  /* the name is space padded - it still needs an end */
     fileP->bufP = NULL;
     fileP->bsize = 0;
     fileP->actual = 0;
