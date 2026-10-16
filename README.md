@@ -182,7 +182,11 @@ Search order:
 
 As in the original compiler, a `$` control line must start in **column 1**
 (`LEFTMARGIN` changes this); an indented `$INCLUDE` is treated as PL/M
-source text and produces syntax errors.
+source text and produces syntax errors.  `LEFTMARGIN(n)` is a listing-margin
+control: it discards the first `n-1` columns of **every** line of the main
+source *and* of every `$INCLUDE`d file, so it suits files extracted from
+listings rather than casually indented control lines.  Within a control
+line, tabs are separators wherever spaces are (`$\tINCLUDE (f.plm)` works).
 
 ## Line endings
 
@@ -211,7 +215,8 @@ writes, and no CR translation on input.  What remains, per area:
   are lower case.
 * `plm0b.c` — control file names may be quoted (`'...'` or `"..."`) and
   contain spaces; control names (but not their parameters) stay
-  case-insensitive; option strings are NUL-terminated before use.
+  case-insensitive; tabs are separators in control lines and in the command
+  tail wherever spaces are; option strings are NUL-terminated before use.
 * `plmfile.c` — `InitF` copies the file name to the end of the string
   instead of stopping at the first blank (names may contain spaces), and
   `file_t.fNam` is NUL-terminated (fixes a buffer overrun in error
