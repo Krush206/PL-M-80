@@ -276,7 +276,7 @@ void DumpLexStream() // to be used after Start1
     int c;
     int w1, w2, w3;
     sym_t *sym;
-    char inc[18];
+    char inc[NAME_SLOT + 1];
 
     if ((fp = Fopen(tx1File.fNam, "rb")) == NULL) {
         fprintf(stderr, "can't open lex stream\n");
@@ -346,12 +346,18 @@ void DumpLexStream() // to be used after Start1
                     showInfo(w1 + botInfo, fpout);
                 }
                 break;
-            case L_INCLUDE:
-                fread(inc + 12, 1, 6, fp);
-                fread(inc + 6, 1, 6, fp);
-                fread(inc, 1, 6, fp);
-                fprintf(fpout, " %.16s", inc);
+            case L_INCLUDE: {
+                int off, c;
+
+                fread(inc + 1 + NAME_SLOT - 6, 1, 6, fp);
+                for (off = NAME_SLOT - 6; off > 0; ) {
+                    off -= 6;
+                    c = fgetc(fp);
+                    fread(inc + 1 + off, 1, 6, fp);
+                }
+                fprintf(fpout, " %.*s", NAME_SLOT, inc + 1);
                 break;
+            }
             }
             putc('\n', fpout);
         }
