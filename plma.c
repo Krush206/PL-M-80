@@ -32,15 +32,12 @@
 
 static byte signonMsg[] = "\r\nISIS-II PL/M-80 COMPILER ";
 static byte noMemMsg[] = "NOT ENOUGH MEMORY FOR A COMPILATION";
-static byte aIxi[] = ".IXI";
-static byte aObj[] = ".OBJ";
-static byte aAsm[] = ".ASM";
-static byte aLst[] = ".LST";
+static byte aIxi[] = ".ixi";
+static byte aObj[] = ".obj";
+static byte aAsm[] = ".asm";
+static byte aLst[] = ".lst";
 static byte aInvocationComm[] = "INVOCATION COMMAND DOES NOT END WITH <CR><LF>";
-static byte aIncorrectDevice[] = "INCORRECT DEVICE SPEC";
-static byte aSourceFileNotDisk[] = "SOURCE FILE NOT A DISKETTE FILE";
 static byte aSourceFileName[] = "SOURCE FILE NAME INCORRECT";
-static byte aSourceFileBadExt[] = "SOURCE FILE EXTENSION INCORRECT";
 static byte aIllegalCommand[] = "ILLEGAL COMMAND TAIL SYNTAX";
 
 static byte  ioBuffer[MAXLL + 2];    // holds a whole command tail line
@@ -84,16 +81,6 @@ static void SkipAlphaNum()
                 || ('0' <= *cmdTextP && *cmdTextP <= '9') || *cmdTextP == '_')
         cmdTextP++;
 } /* SkipAlphaNum() */
-
-/* characters allowed in a file name: as SkipAlphaNum(), plus '-' and ' ',
-   which are common in Unix file names (a quoted name may contain spaces) */
-static bool IsFileChar(int ch)
-{
-    return ('A' <= ch && ch <= 'Z') || ('a' <= ch && ch <= 'z')
-            || ('0' <= ch && ch <= '9') || ch == '_' || ch == '-' || ch == ' ';
-}
-
-
 
 static void GetCmdLine()
 {
@@ -169,56 +156,20 @@ static void ParseInvokeName()
 } /* ParseInvokeName() */
 
 
-void isis2dos(char *src, char *dst)
-{
-    char *s, *d;
-    int i;
-
-    s = src;
-    d = dst;
-    if (*s == ':')
-    {
-        *d++ = *s++;
-        *d++ = *s++;
-        *d++ = *s++;
-        *d++ = *s++;
-    }
-    for (i = 0; i < 8; i++)
-    {
-        if (*s == '.')
-            break;
-        if (*s < ' ')
-        {
-            *d = 0;
-            return;
-        }
-        *d++ = *s++;
-    }
-    for (i = 0; i < 4; i++)
-    {
-        if (*s <= ' ')
-            break;
-        *d++ = *s++;
-    }
-    *d = 0;
-}
-
-
-
 static void ParseSrcFileName()
 {
     pointer fullName;       /* the file name as it appears in the command tail */
-    pointer fileName;       /* its 8.3 part, without any directory */
+    pointer fileName;       /* the base name, without any directory */
     pointer p;              /* scanning pointer */
     pointer end;            /* end of the file name, start of the controls */
     pointer nameEnd;        /* end of the file name itself */
     pointer slash = NULL;   /* last '/' of the file name, if any */
     pointer baseName;       /* the name itself, after any directory */
+    pointer dot;            /* last '.' of the base name, if any */
     word nameLen;
+    word baseLen;
     char fname[MAXLL + 4];
-    char dev[4];
     char dir[ISIS_PATH_LEN];
-    byte devLen = 0;
     bool haveDir = false;
 
     SkipSpace();
@@ -226,7 +177,8 @@ static void ParseSrcFileName()
 
     /* The file name ends at the first space - the controls follow it.  It
        may be quoted, in which case it ends at the matching quote and may
-       contain spaces, e.g. 'sub dir/prog.plm'. */
+       contain spaces, e.g. 'sub dir/prog.plm'.  Plain Unix paths: no
+       :Fn: devices, no 8.3 limits, case preserved. */
     if (*fullName == '\'' || *fullName == '"') {
         char quote = *fullName;
 
@@ -246,33 +198,19 @@ static void ParseSrcFileName()
         nameEnd = end;
     }
 
-    // �뢮��� ��� ��室���� 䠩��
     nameLen = (word)(nameEnd - fullName);
     memcpy(fname, fullName, nameLen);
     fname[nameLen] = 0;
     strcat(fname, "\n");
     PrintStr((pointer)fname, strlen(fname));
 
-    dev[0] = 'F';
-    dev[1] = '0';
-    dev[2] = 0;
     dir[0] = 0;
     fileName = fullName;
-    if (*fileName == ':') {
-        if (nameEnd - fileName < 4 || fileName[3] != ':')
-            Fatal(aIncorrectDevice, Length(aIncorrectDevice));
-        if (toupper((unsigned char)fileName[1]) != 'F')
-            Fatal(aSourceFileNotDisk, Length(aSourceFileNotDisk));
-        dev[0] = toupper((unsigned char)fileName[1]);
-        dev[1] = toupper((unsigned char)fileName[2]);
-        devLen = 4;
-        fileName += 4;
-    }
 
     /* Unix: a directory in front of the name is where the source file is
        read from and where the output files are written to */
     if (slash != NULL) {
-        p = fullName + devLen;
+        p = fullName;
         if (slash == p)            /* /prog.plm - the root directory */
             strcpy(dir, "/");
         else {
@@ -286,41 +224,41 @@ static void ParseSrcFileName()
         haveDir = true;
     }
 
-    for (p = fileName; p < nameEnd && IsFileChar(*p); p++)
-        ;
-    if ((nameLen = (word)(p - fileName)) == 0 || nameLen > 8)
+    /* the base name is kept whole, with the original extension; outputs
+       reuse the stem (up to the last dot) with their own suffix */
+    baseLen = (word)(nameEnd - fileName);
+    if (baseLen == 0 || baseLen > NAME_SLOT)
         Fatal(aSourceFileName, Length(aSourceFileName));
-    srcStemLen = devLen + nameLen;
-    memset(srcStemName, ' ', 12);
-    memmove(srcStemName, fullName, devLen);         /* ":F1:" if given */
-    memmove(srcStemName + devLen, fileName, nameLen);
+    dot = NULL;
+    for (p = fileName; p < nameEnd; p++)
+        if (*p == '.')
+            dot = p;
+    if (dot != NULL && dot != fileName)
+        nameLen = (word)(dot - fileName);       /* the stem, without extension */
+    else
+        nameLen = baseLen;
+    if (nameLen > NAME_SLOT - 4)
+        Fatal(aSourceFileName, Length(aSourceFileName));
+    srcStemLen = (byte)nameLen;
+    memset(srcStemName, 0, NAME_SLOT + 4);
+    memmove(srcStemName, fileName, nameLen);
 
     baseName = fileName;                            /* the name, without any directory */
-    if (p < nameEnd && *p == '.') {
-        p++;
-        for (fileName = p; p < nameEnd && IsFileChar(*p); p++)
-            ;
-        if ((nameLen = (word)(p - fileName)) == 0 || nameLen > 3)
-            Fatal(aSourceFileBadExt, Length(aSourceFileBadExt));
-    }
-    if (p != nameEnd)                               /* anything else is an error */
-        Fatal(aSourceFileName, Length(aSourceFileName));
-
     if (haveDir) {
-        char srcName[16];               /* bounded copy - the command tail
-                                           ends at CR, not at a NUL */
+        char srcName[NAME_SLOT + 4];    /* bounded copy - the command tail
+                                            ends at CR, not at a NUL */
 
-        nameLen = (word)(p - baseName);
-        memcpy(srcName, baseName, nameLen);
-        srcName[nameLen] = 0;
-        SetDevDir(dev, dir, srcName);
+        if (baseLen >= sizeof srcName)
+            Fatal(aSourceFileName, Length(aSourceFileName));
+        memcpy(srcName, baseName, baseLen);
+        srcName[baseLen] = 0;
+        SetSrcDir(dir, srcName);
     }
 
     srcFileIdx = 0;
-    memset(srcFileTable, ' ', 18);
-    memmove(srcFileTable, fullName, devLen);
-    memmove((byte *)srcFileTable + devLen, baseName, (size_t)(p - baseName));
-    memset(&srcFileTable[8], 0, 4);
+    memset(srcFileTable, ' ', NAME_SLOT);
+    memmove((pointer)srcFileTable, baseName, baseLen);
+    memset(&srcFileTable[SRC_LOC_OFF], 0, 4);
     cmdTextP = end;
     SkipSpace();
     if (*cmdTextP == '$')
@@ -334,28 +272,28 @@ static void ParseSrcFileName()
 static void InitFilesAndDefaults()
 {
     LEFTMARGIN = 1;
-    memset(ixiFileName, ' ', FILE_NAME_LEN);
+    memset(ixiFileName, 0, NAME_SLOT + 4);
     memmove(ixiFileName, srcStemName, srcStemLen);
     memmove(&ixiFileName[srcStemLen], aIxi, 4);
     InitF(&ixiFile, (pointer)"IXREF ", ixiFileName);
     objBlk = objByte = 0;
-    memset(objFileName, ' ', FILE_NAME_LEN);
+    memset(objFileName, 0, NAME_SLOT + 4);
     memmove(objFileName, srcStemName, srcStemLen);
     memmove(&objFileName[srcStemLen], aObj, 4);
     InitF(&objFile, (pointer)"OBJECT", objFileName);
-    memset(asmFileName, ' ', FILE_NAME_LEN);
+    memset(asmFileName, 0, NAME_SLOT + 4);
     memmove(asmFileName, srcStemName, srcStemLen);
     memmove(&asmFileName[srcStemLen], aAsm, 4);
     InitF(&asmFile, (pointer)"ASM   ", asmFileName);
-    memset(lstFileName, ' ', FILE_NAME_LEN);
+    memset(lstFileName, 0, NAME_SLOT + 4);
     memmove(lstFileName, srcStemName, srcStemLen);
     memmove(&lstFileName[srcStemLen], aLst, 4);
     InitF(&lstFil, (pointer)"LIST ", lstFileName);
-    InitF(&tx1File, (pointer)"UT1 ", (pointer)":F1:PLMTX1.TMP ");
-    InitF(&tx2File, (pointer)"UT2 ", (pointer)":F1:PLMTX2.TMP ");
-    InitF(&atFile, (pointer)"AT  ", (pointer)":F1:PLMAT.TMP ");
-    InitF(&nmsFile, (pointer)"NAMES ", (pointer)":F1:PLMNMS.TMP ");
-    InitF(&xrfFile, (pointer)"XREF ", (pointer)":F1:PLMXRF.TMP ");
+    InitF(&tx1File, (pointer)"UT1 ", (pointer)"PLMTX1.TMP ");
+    InitF(&tx2File, (pointer)"UT2 ", (pointer)"PLMTX2.TMP ");
+    InitF(&atFile, (pointer)"AT  ", (pointer)"PLMAT.TMP ");
+    InitF(&nmsFile, (pointer)"NAMES ", (pointer)"PLMNMS.TMP ");
+    InitF(&xrfFile, (pointer)"XREF ", (pointer)"PLMXRF.TMP ");
     IXREF = false;
     IXREFSet = false;
     PRINT = true;
