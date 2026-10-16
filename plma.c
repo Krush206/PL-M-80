@@ -46,8 +46,8 @@ pointer cmdTextP;
 
 static void SkipSpace()
 {
-    while (*cmdTextP == ' ' || *cmdTextP == '&') {
-        if (*cmdTextP == ' ')
+    while (*cmdTextP == ' ' || *cmdTextP == '\t' || *cmdTextP == '&') {
+        if (*cmdTextP == ' ' || *cmdTextP == '\t')
             cmdTextP++;
         else if (cmdLineP->link) {
             cmdLineP = cmdLineP->link;
@@ -175,10 +175,10 @@ static void ParseSrcFileName()
     SkipSpace();
     fullName = cmdTextP;
 
-    /* The file name ends at the first space - the controls follow it.  It
-       may be quoted, in which case it ends at the matching quote and may
-       contain spaces, e.g. 'sub dir/prog.plm'.  Plain Unix paths: no
-       :Fn: devices, no 8.3 limits, case preserved. */
+    /* The file name ends at the first space or tab - the controls follow
+       it.  It may be quoted, in which case it ends at the matching quote
+       and may contain spaces, e.g. 'sub dir/prog.plm'.  Plain Unix paths:
+       no :Fn: devices, no 8.3 limits, case preserved. */
     if (*fullName == '\'' || *fullName == '"') {
         char quote = *fullName;
 
@@ -192,7 +192,8 @@ static void ParseSrcFileName()
         if (*++end != ' ' && *end != '\r' && *end != '&')    /* junk after the quote */
             Fatal(aSourceFileName, Length(aSourceFileName));
     } else {
-        for (end = fullName; *end != ' ' && *end != '\r' && *end != '&'; end++)
+        for (end = fullName; *end != ' ' && *end != '\t' &&
+                             *end != '\r' && *end != '&'; end++)
             if (*end == '/' || *end == '\\')
                 slash = end;
         nameEnd = end;
