@@ -668,6 +668,12 @@ void Z80_AtPrescan(void)
         }
     }
     Rewind(&atFile);
+    /* Rewind() only seeks the underlying file; the in-memory buffer still
+       holds the last block read during the prescan. Reload the first block
+       and reset curoff so the phase-3 replay (Sub_49F9) starts from a
+       consistent state, exactly as CreatF() left it. */
+    ReadF(&atFile, atFile.bufP, atFile.bsize, &atFile.actual);
+    atFile.curoff = 0;
 }
 
 static bool z80_at_base(word varInfo, word *base)
