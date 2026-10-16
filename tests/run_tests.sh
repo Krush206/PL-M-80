@@ -112,6 +112,7 @@ for n in "./hello.plm" "sub dir/hello.plm" "deep/deeper/deepest/hello.plm"; do
     cp "$TMP/hello.plm" "$run/$n"
 done
 cp "$TMP/hello.plm" "$run/noext"
+cp "$TMP/hello.plm" "$run/tabname.plm"
 ( cd "$run" && "$PLM" "./hello.plm" ) >/dev/null 2>&1
 check "./name works" test -f "$run/hello.lst"
 ( cd "$run" && "$PLM" "'sub dir/hello.plm'" ) >/dev/null 2>&1
@@ -123,6 +124,10 @@ cp "$TMP/hello.plm" "$run/MIXEDPLM.PLM"
 check "upper-case name works, case preserved" test -f "$run/MIXEDPLM.lst"
 ( cd "$run" && "$PLM" noext ) >/dev/null 2>&1
 check "missing .PLM extension accepted" test -f "$run/noext.lst"
+( cd "$run" && "$PLM" "$(printf 'tabname.plm\tnoprint')" ) >/dev/null 2>&1
+rc=$?
+check "tab between source name and controls works" test "$rc" -eq 0
+not_check "  and the control took effect" test -f "$run/tabname.lst"
 cp "$TMP/hello.plm" "$run/abs.plm"
 ( cd "$TMP" && "$PLM" "$run/abs.plm" ) >/dev/null 2>&1
 check "absolute path source works" test -f "$run/abs.lst"
@@ -202,6 +207,13 @@ check "missing include exits nonzero" test "$rc" -ne 0
 ( cd "$run" && "$PLM" indent.plm ) >/dev/null 2>&1
 rc=$?
 check "indented \$INCLUDE is not a control (column 1 required)" test "$rc" -ne 0
+printf 'MAINTAB: DO;\n$\tINCLUDE (inc1.plm)\n  INC1VAR = 1;\nEND MAINTAB;\n' > "$TMP/tabincl.plm"
+printf 'MAINTAB2: DO;\n$\tNOLIST\t\n  DECLARE V BYTE;\n  V = 1;\nEND MAINTAB2;\n' > "$TMP/tabctl.plm"
+cp "$TMP/tabincl.plm" "$TMP/tabctl.plm" "$run/"
+( cd "$run" && "$PLM" tabincl.plm ) >/dev/null 2>&1
+check "\$INCLUDE after a tab works" test -f "$run/tabincl.obj"
+( cd "$run" && "$PLM" tabctl.plm ) >/dev/null 2>&1
+check "tabs around a control name work" test -f "$run/tabctl.obj"
 
 echo "== include search order"
 run="$TMP/search"
