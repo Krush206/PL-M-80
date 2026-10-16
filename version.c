@@ -62,11 +62,17 @@ byte szHelp[] = "Primary controls:\n"
 "                             page of listed output.\n"
 " OBJECT[(pathname)]/NOOBJECT The control specifies that an object module is\n"
 "                             to be created during the compilations.\n"
+" ORG(address)                The control sets the initial org address of\n"
+"                             the generated .asm file.  The address may be\n"
+"                             decimal (256), Intel hex (0100h) or 0x hex\n"
+"                             (0x100).\n"
+" SMSHEADER                   The control appends a Sega Master System\n"
+"                             cartridge header at 7FF0H, so the assembled\n"
+"                             binary is a 32KB SMS ROM image.  Use with\n"
+"                             org(0): the header sits at an absolute address,\n"
+"                             and variables and the stack move to work RAM.\n"
 " OPTIMIZE/NOOPTIMIZE         The control allows optimizations when generating\n"
 "                             object code.\n"
-" WORKFILES(:dev:,:dev:)      The control allows you to specify any two devices\n"
-"                             for storage of work files, which are deleted at\n"
-"                             the end of compilation. Default device is a :F1:.\n"
 " INTVECTOR/NOINTVECTOR       Under the INVECTOR control, the compiler creates\n"
 "                             an interrupt vector consisting of a 4-byte entry\n"
 "                             for each interrupt procedure in the module.\n"
@@ -98,9 +104,8 @@ byte szHelp[] = "Primary controls:\n"
 "                             an $IF element will appear in the listing or it\n"
 "                             is skipped.\n"
 "Where:\n"
-"  pathname - is a standard ISIS-II pathname with specifies the file or device.\n"
-"  :dev:    - is a standard ISIS-II device, emulated throught system\n"
-"             environment variables.\n";
+"  pathname - is a plain Unix path (case preserved, no length limits\n"
+"             beyond the command tail and the 252 byte name slot).\n";
 
 
 
@@ -120,6 +125,6 @@ void showVersion(FILE *fp, bool full)
     {
         fputs("32 bit target - Git: untracked [2020-08-09] +untracked files\n", fp);
     }
-    fprintf(fp, "Usage: PLM80.EXE sourcefile [controls]\n");
+    fprintf(fp, "Usage: plm80c sourcefile [controls]\n");
     fprintf(fp, "%s", szHelp);
 }
