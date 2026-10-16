@@ -158,7 +158,7 @@ static void UnknownCtrl()
 
 static void SkipWhite()     // also skips non print characters
 {
-    while (*curChP == ' ')  // PMO: should possibly also skip tab
+    while (*curChP == ' ' || *curChP == '\t')   // tabs are whitespace
         NxtCh();
 }
 
@@ -228,7 +228,8 @@ static void AcceptFileName()
             while (*curChP != quote && chrClass != CC_NEWLINE)
                 NxtCh();
         } else
-            while (*curChP != ' ' && *curChP != ')' && chrClass != CC_NEWLINE)  // doesn't allow tab
+            while (*curChP != ' ' && *curChP != '\t' && *curChP != ')' &&
+                   chrClass != CC_NEWLINE)
                 NxtCh();
         tknLen = (byte)(curChP - optStrValP);
         if (quote != 0) {
@@ -351,7 +352,8 @@ static void UpcaseToken()
 static void GetToken()
 {
     optStrValP = curChP;
-    while (*curChP != ' ' && *curChP != '(' && chrClass != CC_NEWLINE)
+    while (*curChP != ' ' && *curChP != '\t' && *curChP != '(' &&
+           chrClass != CC_NEWLINE)
         NxtCh();
     tknLen = (byte)(curChP - optStrValP);
     UpcaseToken();
