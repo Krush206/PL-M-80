@@ -444,10 +444,10 @@ static byte GetSourceCh()
             }
             crCnt = 0;
             CloseF(&srcFil);        /* unnest include file */
-            srcFileIdx = srcFileIdx - 11;
+            srcFileIdx = srcFileIdx - SRC_ENTRY_WORDS;
             InitF(&srcFil, (pointer)"SOURCE", (pointer)&srcFileTable[srcFileIdx]);
             OpenF(&srcFil, 1);
-            SeekF(&srcFil, (loc_t *)&srcFileTable[srcFileIdx + 9]);
+            SeekF(&srcFil, (loc_t *)&srcFileTable[srcFileIdx + SRC_LOC_OFF]);
         }
         offLastCh = offLastCh - 1;      /* correct for 0 index */
     } else
