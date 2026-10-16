@@ -20,7 +20,7 @@ There are no external dependencies.
 ## Usage
 
 ```sh
-./plm80c source.plm [controls] [-o addr] [-h]
+./plm80c source.plm [controls]
 ```
 
 Examples:
@@ -30,15 +30,14 @@ Examples:
 ./plm80c hello.plm noprint noobject     # compile only
 ./plm80c src/app.plm 'print(lst/app.lst)'
 ./plm80c "'sub dir/app.plm'"            # quoted: may contain spaces
-./plm80c ':F1:hello.plm'                # use the :F1: device mapping
-./plm80c game.plm -o 0 -h               # Sega Master System ROM (see below)
+./plm80c game.plm 'org(0)' smsheader    # Sega Master System ROM (see below)
 ```
 
-The `-o addr` option sets the initial `org` address of the generated
+The `org(addr)` control sets the initial `org` address of the generated
 `.asm` file (`0100h`, `0x100` and `256` all mean the same); without it no
-`org` is emitted.  The `-h` option appends a Sega Master System cartridge
-header (see below).  Both are removed from the command tail before the
-usual controls are parsed, so all existing controls keep working.
+`org` is emitted.  The `smsheader` control appends a Sega Master System
+cartridge header (see below).  Both are ordinary primary controls, so they
+work on the command tail and on `$` control lines alike, exactly once each.
 
 Exit status: `0` on success, `1` if the source had errors, `2` for command
 line / environment failures.
@@ -96,7 +95,8 @@ Limitations:
 
 ## Sega Master System output
 
-`./plm80c game.plm -h` writes a `.asm` whose assembled binary is a 32KB
+`./plm80c game.plm 'org(0)' smsheader` writes a `.asm` whose assembled
+binary is a 32KB
 SMS ROM image: the program followed by the 16-byte cartridge header at
 `7FF0H` (`"TMR SEGA"`, reserved `FFFFH`, zero checksum and product code,
 version 0, `4CH` = SMS Export with checksum range `0000-7FEF`):
@@ -112,13 +112,13 @@ refuses to write the `.asm` file (exit status 2); the `.obj`/`.lst` files
 are still produced.
 
 On the Master System the cartridge space (`0000-7FFF`) is read-only while
-work RAM (`C000-DFFF`) is writeable, so with `-h` the compiler places
+work RAM (`C000-DFFF`) is writeable, so with `smsheader` the compiler places
 variables and the stack in RAM instead of behind the code: data labels are
 defined with `equ` starting at `C000H`, and `<mod>_STACK_ORIGIN` becomes
 `DFF0H` (the stack grows down towards the variables).  Variables declared
 with `INITIAL` keep their bytes in the ROM image and a short routine at
 `ASM_START` copies them into RAM before the program runs.  Always build the
-SMS target with `-h` — without it the data and stack land in ROM and any
+SMS target with `smsheader` — without it the data and stack land in ROM and any
 write, `CALL` or `RET` silently misbehaves on real hardware.
 
 Most emulators boot the ROM as-is; strict ones (and real hardware) also
@@ -139,28 +139,18 @@ the `.asm` tail; edit them there if the defaults do not suit the release.
 
 ## File naming rules
 
+Plain Unix paths everywhere: no `:Fn:` device prefixes, no 8.3 limits, and
+names are used exactly as written (case preserved).
+
 * **Names may be quoted** with `'...'` or `"..."`, which allows spaces in
   them.  This applies to the source file name and to file names in
   controls: `PRINT('my file.lst')`.
 
-* **Devices** `:F0:` … `:F9:` map to directories through environment
-  variables of the same name:
+* **Path separators** may be `/` or `\`; `.`/`..` components work as usual.
 
-  ```sh
-  F1=$HOME/src/plm ./plm80c ':F1:prog.plm'
-  ```
-
-  An unmapped device means the current working directory, so plain Unix
-  names work without any environment setup.
-
-* **Path separators** may be `/` or `:`; `.`/`..` components work as usual.
-  Leading `/` bypasses device mapping.
-
-* **Reads are case-insensitive, names are written lower case.**  The compiler
-  looks up each component against the real directory entries (so
-  `./HELLO.PLM` finds `hello.plm` on a case-sensitive filesystem); files it
-  *creates* are named in lower case.  Extensions are optional when reading:
-  `foo` finds `foo.plm`, `foo.PLM`.
+* **Reads are exact; names are written as given.**  `./plm80c Mixed.plm`
+  reads `Mixed.plm` (nothing else) and writes `Mixed.lst`/`Mixed.obj`.
+  Extensions are optional when reading: `foo` finds `foo.plm`.
 
 * **Outputs land next to the source.**  `./plm80c sub/app.plm` writes
   `sub/app.lst` and `sub/app.obj` (unless `PRINT(...)`/`OBJECT(...)` says
@@ -168,13 +158,10 @@ the `.asm` tail; edit them there if the defaults do not suit the release.
   control file name (`PRINT(out/x.lst)`) is relative to the current
   directory.
 
-* **ISIS 8.3 name limits still apply**: a source or include file name has at
-  most 8 characters before the dot and 3 after it (`toolongname.plm` is
-  rejected with "SOURCE FILE NAME INCORRECT"), and a file name given in a
-  control is at most 16 characters long including any directory (longer ones
-  are rejected as "ILLEGAL COMMAND TAIL SYNTAX OR VALUE").  Directories
-  themselves may have any name and length; source file paths may be up to
-  253 characters.
+* **Path lengths.**  Source and include names travel through fixed 252-byte
+  slots, so keep them shorter than that; the command tail itself is at most
+  253 characters.  Longer names are rejected with "SOURCE FILE NAME
+  INCORRECT" (source file) or "INVALID PATH-NAME" (control file).
 
 ## `$INCLUDE`
 
@@ -199,31 +186,40 @@ source text and produces syntax errors.
 
 ## Line endings
 
-Input may be either LF or CRLF.  Output text (console messages and `.lst`
-listings) uses LF; object files, `.ixi` cross-reference files and internal
-`.tmp` scratch files stay byte-for-byte compatible with the MS-DOS/ISIS
-format (CRLF record markers) so that the linker and other tools in this
-suite still read them.
+Input is read byte for byte; a CR is just whitespace to the scanner, so
+both LF and CRLF sources compile.  Output text (console messages and
+`.lst` listings) uses LF; object files, `.ixi` cross-reference files and
+internal `.tmp` scratch files stay byte-for-byte compatible with the
+MS-DOS/ISIS format (CRLF record markers) so that the linker and other tools
+in this suite still read them.
 
 ## Port notes
 
-Changes made for Unix are confined to the OS-facing layer:
+The ISIS compatibility layer is gone: no `:Fn:` devices (the `F1=dir`
+environment mapping, `deviceMap`, `WORKFILES`), no 8.3 name limits, no
+space-padded/upper-cased names, no case-insensitive lookup or lower-case
+writes, and no CR translation on input.  What remains, per area:
 
-* `io.c` — path parsing/resolution, device mapping, directory-aware open,
-  case-insensitive lookup, line-ending translation, EINTR retry,
-  `SetDevDir()` for source-relative outputs, and the second lookup
+* `io.c` — plain Unix paths with directory-aware open, EINTR retry,
+  `SetSrcDir()` for source-relative outputs, and the second lookup
   location (`altName`) used when reading so `$INCLUDE` works from either
-  directory.  Space-padded ISIS names are trimmed before parsing, but
-  spaces inside names are kept.
+  directory.  The only `:` form still recognised is the `:CI:` console
+  behind the command tail.  Dash flags are gone too: the old `-o addr` and
+  `-h` are now the `org(addr)` and `smsheader` primary controls.
 * `plma.c` — command-line source file names with directories, optionally
-  quoted to allow spaces.
+  quoted to allow spaces; generated extensions (`.obj`/`.lst`/`.asm`/`.ixi`)
+  are lower case.
 * `plm0b.c` — control file names may be quoted (`'...'` or `"..."`) and
-  contain spaces; option strings are NUL-terminated before use.
+  contain spaces; control names (but not their parameters) stay
+  case-insensitive; option strings are NUL-terminated before use.
 * `plmfile.c` — `InitF` copies the file name to the end of the string
   instead of stopping at the first blank (names may contain spaces), and
   `file_t.fNam` is NUL-terminated (fixes a buffer overrun in error
   reporting).
-* `plm.h` — `MAXLL` raised to 253, `spath_t` gained a `dir` member.
+* `plm.h` — `MAXLL` raised to 253, `NAME_SLOT` (252) padded path slots for
+  the file tables and the `$INCLUDE` lex-stream record.
+* `z80asm.c` — the `.asm` name is derived from the object name with a
+  lower-case `.asm` suffix instead of 8.3 rules.
 * `data.c`/`plmb.c` — `#pragma off/on(unreferenced)` guarded for
   non-Watcom compilers.
 
