@@ -70,28 +70,27 @@ static byte optTable[] =            // name      tokenId   primary controlId   c
 "\x8OPTIMIZE\0\0\x6\x1\xA"      // OPTIMIZE     0         0       6           1         10
 "\xANOOPTIMIZE\0\0\x6\0\xA"     // NOOPTIMIZE   0         0       6           0         10
 "\x7INCLUDE\0\x1\xFF\x6\0"      // INCLUDE      0         1       0xFF        6         0
-"\x9WORKFILES\0\0\xFF\xA\xB"    // WORKFILES    0         0       0xFF        10        11
-"\x9INTVECTOR\0\0\xFF\xB\xC"    // INTVECTOR    0         0       0xFF        11        12
-"\xBNOINTVECTOR\0\0\xFF\xC\xC"  // NOINTVECTOR  0         0       0xFF        12        12
-"\x5IXREF\0\0\xFF\xD\xD"        // IXREF        0         0       0xFF        13        13
-"\x7NOIXREF\0\0\xFF\xE\xD"      // NOIXREF      0         0       0xFF        14        13
-"\x4SAVE\0\x1\xFF\xF\0"         // SAVE         0         1       0xFF        15        0
-"\x7RESTORE\0\x1\xFF\x10\0"     // RESTORE      0         1       0xFF        16        0
-"\x3SET\0\x1\xFF\x11\0"         // SET          0         1       0xFF        17        0
-"\x5RESET\0\x1\xFF\x12\0"       // RESET        0         1       0xFF        18        0
-"\x2IF\0\x1\xFF\x13\0"          // IF           0         1       0xFF        19        0
-"\x6" "ELSEIF\0\x1\xFF\x14\0"   // ELSEIF       0         1       0xFF        20        0
-"\x4" "ELSE\0\x1\xFF\x14\0"     // ELSE         0         1       0xFF        20        0
-"\x5" "ENDIF\0\x1\xFF\x15\0"    // ENDIF        0         1       0xFF        21        0
-"\x4" "COND\0\x1\xFF\x16\0"     // COND         0         1       0xFF        22        0
-"\x6NOCOND\0\x1\xFF\x17\0";     // NOCOND       0         1       0xFF        23        0
+"\x9INTVECTOR\0\0\xFF\xA\xC"    // INTVECTOR    0         0       0xFF        10        12
+"\xBNOINTVECTOR\0\0\xFF\xB\xC"  // NOINTVECTOR  0         0       0xFF        11        12
+"\x5IXREF\0\0\xFF\xC\xD"        // IXREF        0         0       0xFF        12        13
+"\x7NOIXREF\0\0\xFF\xD\xD"      // NOIXREF      0         0       0xFF        13        13
+"\x4SAVE\0\x1\xFF\xE\0"         // SAVE         0         1       0xFF        14        0
+"\x7RESTORE\0\x1\xFF\xF\0"     // RESTORE      0         1       0xFF        15        0
+"\x3SET\0\x1\xFF\x10\0"         // SET          0         1       0xFF        16        0
+"\x5RESET\0\x1\xFF\x11\0"       // RESET        0         1       0xFF        17        0
+"\x2IF\0\x1\xFF\x12\0"          // IF           0         1       0xFF        18        0
+"\x6" "ELSEIF\0\x1\xFF\x13\0"   // ELSEIF       0         1       0xFF        19        0
+"\x4" "ELSE\0\x1\xFF\x13\0"     // ELSE         0         1       0xFF        19        0
+"\x5" "ENDIF\0\x1\xFF\x14\0"    // ENDIF        0         1       0xFF        20        0
+"\x4" "COND\0\x1\xFF\x15\0"     // COND         0         1       0xFF        21        0
+"\x6NOCOND\0\x1\xFF\x16\0"     // NOCOND       0         1       0xFF        22        0
+"\x3ORG\0\0\xFF\x17\xE"         // ORG          0         0       0xFF        23        14
+"\x9SMSHEADER\0\0\xFF\x18\xF";   // SMSHEADER    0         0       0xFF        24        15OCOND       0         1       0xFF        23        0
 
 static byte ebadTail[] = "ILLEGAL COMMAND TAIL SYNTAX OR VALUE";
 static byte ebadcontrol[] = "UNRECOGNIZED CONTROL IN COMMAND TAIL";
-static byte errNotDisk[] = "INCLUDE FILE IS NOT A DISKETTE FILE";
-static byte errWorkFiles[] = "MISPLACED CONTROL: WORKFILES ALREADY OPEN";
 
-byte primaryCtrlSeen[14];   // C defaults to all false
+byte primaryCtrlSeen[16];   // C defaults to all false
 static struct {
     byte code;
     byte list;
@@ -108,7 +107,7 @@ static byte chrClass;
 static byte tknLen;
 static pointer optStrValP;
 static word optNumValue;
-static byte optFileName[18];
+static byte optFileName[NAME_SLOT + 4];
 static bool ixiGiven;
 static bool objGiven;
 static bool lstGiven;
@@ -135,9 +134,6 @@ static void NxtCh()
         chrClass = CC_NEWLINE;
     else if ((chrClass = cClass[*curChP]) == CC_NONPRINT)
         *curChP = ' ';
-    // upcase
-    if ((*curChP >= 'a') && (*curChP <= 'z'))
-        *curChP &= 0x5f;
 } /* NxtCh() */
 
 
@@ -242,13 +238,13 @@ static void AcceptFileName()
             } else
                 NxtCh();                    /* consume the closing quote */
         }
-        if (tknLen > 16) {
+        if (tknLen > NAME_SLOT) {
             BadCmdTail(ERR17);  /* INVALID PATH-NAME */
             tknLen = 0;
         } else if (tknLen != 0) {
-            memset(optFileName, ' ', sizeof(optFileName));
+            memset(optFileName, ' ', NAME_SLOT);
             memcpy(optFileName, optStrValP, tknLen);
-            optFileName[sizeof(optFileName) - 1] = 0;
+            optFileName[NAME_SLOT] = 0;
             optStrValP = optFileName;
             tknLen = tknLen + 1;    // include trailing space
         }
@@ -316,6 +312,13 @@ static word ParseNum()
     while (chrClass <= CC_ALPHA)
         NxtCh();
     nextCh = curChP - 1;
+    {   /* number suffixes (H/Q/O/B/D) are case-insensitive */
+        pointer up;
+
+        for (up = firstCh; up <= nextCh; up++)
+            if ('a' <= *up && *up <= 'z')
+                *up &= 0x5f;
+    }
     SkipWhite();
     radix = ChkRadix(&nextCh);
     return Asc2Num(firstCh, nextCh, radix);
@@ -334,12 +337,24 @@ static void GetOptNumVal()
 }
 
 
+static void UpcaseToken()
+{
+    /* control names (but not their parameters) are case-insensitive */
+    byte i;
+
+    for (i = 0; i < tknLen; i++)
+        if ('a' <= optStrValP[i] && optStrValP[i] <= 'z')
+            optStrValP[i] &= 0x5f;
+}
+
+
 static void GetToken()
 {
     optStrValP = curChP;
     while (*curChP != ' ' && *curChP != '(' && chrClass != CC_NEWLINE)
         NxtCh();
     tknLen = (byte)(curChP - optStrValP);
+    UpcaseToken();
 }
 
 
@@ -354,7 +369,10 @@ static void ParseId(byte maxLen)
     if (chrClass == CC_HEXCHAR || chrClass == CC_ALPHA)     // A-Z
         while (chrClass <= CC_ALPHA || chrClass == CC_DOLLAR) { // 0-9 A-Z $
             if (chrClass != CC_DOLLAR && tknLen <= maxLen) {
-                pstr[tknLen + 1] = *curChP;
+                if ('a' <= *curChP && *curChP <= 'z')
+                    pstr[tknLen + 1] = *curChP & 0x5f;
+                else
+                    pstr[tknLen + 1] = *curChP;
                 tknLen = tknLen + 1;
             }
             NxtCh();
@@ -663,31 +681,28 @@ static void OptInclude()
         BadCmdTail(ERR15);  /* MISSING INCLUDE CONTROL PARAMETER */
         return;
     }
-    if (optFileName[0] == ':') {
-        if (optFileName[1] != 'F') {
-            if (offFirstChM1 != 0)
-                Fatal(errNotDisk, Length(errNotDisk));
-            else
-                FatalError(ERR98);  /* INCLUDE FILE IS not A DISKETTE FILE */
-        }
-    }
-    if (srcFileIdx >= 55)
+    if (srcFileIdx >= SRC_MAX_IDX)
         SyntaxError(ERR13); /* LIMIT EXCEEDED: INCLUDE NESTING */
     else {
-        TellF(&srcFil, (loc_t *)&srcFileTable[srcFileIdx + 9]);
-        Backup((loc_t *)&srcFileTable[srcFileIdx + 9], offLastCh - offCurCh);
-        srcFileIdx = srcFileIdx + 11;
-        memmove(&srcFileTable[srcFileIdx], optStrValP, 18);   /* the padded name, incl any spaces */
+        TellF(&srcFil, (loc_t *)&srcFileTable[srcFileIdx + SRC_LOC_OFF]);
+        Backup((loc_t *)&srcFileTable[srcFileIdx + SRC_LOC_OFF], offLastCh - offCurCh);
+        srcFileIdx = srcFileIdx + SRC_ENTRY_WORDS;
+        memmove(&srcFileTable[srcFileIdx], optStrValP, NAME_SLOT);   /* the padded name, incl any spaces */
         CloseF(&srcFil);
         InitF(&srcFil, (pointer)"SOURCE", optStrValP);
         OpenF(&srcFil, 1);
         offCurCh = offLastCh;
-        WrByte(L_INCLUDE);
-        WrBuf(optStrValP + 12, 6);
-        WrByte(L_INCLUDE);
-        WrBuf(optStrValP + 6, 6);
-        WrByte(L_INCLUDE);
-        WrBuf(optStrValP, 6);
+        {
+            word off;
+
+            /* one marker + 6 name bytes per item, last chunk first; every
+               phase below consumes the items the same way */
+            for (off = NAME_SLOT; off > 0; ) {
+                off -= 6;
+                WrByte(L_INCLUDE);
+                WrBuf(optStrValP + off, 6);
+            }
+        }
     }
     SkipWhite();
     if (*curChP != '\r')
@@ -743,64 +758,47 @@ static void OptIntVector()
     }
 }
 
-// lifted to filescope
-
-static bool isOK;
-static pointer lFname;
-
-static void AcceptRangeChrs(byte lch, byte hch)
+/* ORG(addr): initial org address of the .asm output.  Same formats as
+   decimal/hex Intel literals: 256, 0100h, 0x100. */
+static void OptOrg()
 {
-    if (isOK) {
-        if (*curChP < lch || hch < *curChP) {
-            BadCmdTail(ERR12);  /* INVALID CONTROL PARAMETER */
-            SkipToRPARorEOL();
-            isOK = false;
-        } else {
-            *lFname = *curChP;
-            lFname = lFname + 1;
-            NxtCh();
-        }
-    }
-}
-
-static bool AcceptDrive(pointer fname, byte follow)
-{
-    lFname = fname;
-
-    isOK = true;
-    SkipWhite();
-    AcceptRangeChrs(':', ':');
-    AcceptRangeChrs('F', 'F');
-    AcceptRangeChrs('0', '9');
-    AcceptRangeChrs(':', ':');
-    SkipWhite();
-    AcceptRangeChrs(follow, follow);
-    return isOK;
-}
-
-
-static void OptWorkFiles()
-{
-    byte wrkFiles1[5], wrkFiles2[5];
+    char addr[16];
+    word n = 0;
 
     SkipWhite();
-    if (*curChP != '(')
+    if (*curChP != '(') {
         BadCmdTail(ERR11);  /* MISSING CONTROL PARAMETER */
-    else {
-        NxtCh();
-        if (!AcceptDrive(wrkFiles1, ','))
-            return;
-        if (!AcceptDrive(wrkFiles2, ')'))
-            return;
-        if (tx1File.aftn != 0)
-            Fatal(errWorkFiles, Length(errWorkFiles));
-        memmove(atFile.fNam, wrkFiles1, 4);
-        memmove(nmsFile.fNam, wrkFiles1, 4);
-        memmove(tx1File.fNam, wrkFiles1, 4);
-        memmove(xrfFile.fNam, wrkFiles1, 4);
-        memmove(tx2File.fNam, wrkFiles2, 4);
+        return;
     }
+    NxtCh();
+    SkipWhite();
+    while (*curChP != ')' && chrClass != CC_NEWLINE && n < sizeof addr - 1) {
+        addr[n++] = *curChP;
+        NxtCh();
+    }
+    addr[n] = 0;
+    SkipWhite();
+    if (*curChP != ')') {
+        BadCmdTail(ERR12);  /* INVALID CONTROL PARAMETER */
+        SkipToRPARorEOL();
+        return;
+    }
+    if (!parseOrgAddr(addr, &z80orgAddr)) {
+        BadCmdTail(ERR12);  /* INVALID CONTROL PARAMETER */
+        SkipToRPARorEOL();
+        return;
+    }
+    z80orgSet = true;
+    NxtCh();
 }
+
+/* SMSHEADER: append the Sega Master System cartridge header at 7FF0H.
+   Always combine with org(0): the header sits at an absolute address. */
+static void OptSmsHeader()
+{
+    z80header = true;
+}
+
 
 static void OptSave()
 {
@@ -927,20 +925,21 @@ static void ParseControlExtra()
     case 7: OptPrint(); break;
     case 8: PRINT = false; PRINTSet = false; break;
     case 9: OBJECT = false; OBJECTSet = false; break;
-    case 10: OptWorkFiles(); break;
-    case 11: OptIntVector(); break;
-    case 12: intVecNum = 0; break;
-    case 13: OptIXRef(); break;
-    case 14: IXREF = false; IXREFSet = false; break;
-    case 15: OptSave(); break;
-    case 16: OptRestore(); break;
-    case 17: OptSetReset(true); break;
-    case 18: OptSetReset(false); break;
-    case 19: OptIf(); break;
-    case 20: OptElseElseIf(); break;
-    case 21: OptEndIf(); break;
-    case 22: COND = true; break;
-    case 23: COND = false; break;
+    case 10: OptIntVector(); break;
+    case 11: intVecNum = 0; break;
+    case 12: OptIXRef(); break;
+    case 13: IXREF = false; IXREFSet = false; break;
+    case 14: OptSave(); break;
+    case 15: OptRestore(); break;
+    case 16: OptSetReset(true); break;
+    case 17: OptSetReset(false); break;
+    case 18: OptIf(); break;
+    case 19: OptElseElseIf(); break;
+    case 20: OptEndIf(); break;
+    case 21: COND = true; break;
+    case 22: COND = false; break;
+    case 23: OptOrg(); break;
+    case 24: OptSmsHeader(); break;
     }
 }
 
@@ -1088,26 +1087,24 @@ void GNxtCh()
 }
 
 
-// get next char into *inChrP
-// char is 0x81 on EOF, cr is discarded
-
+// get next char into *inChrP; the source is read as-is, byte for byte
+// (char is 0x81 on EOF; a CR is just whitespace to the scanner, see cClass)
 static byte InGetC()
 {
     byte c;
-    do {
-        if (offCurCh == offLastCh) {
-            offCurCh = 0;
-            ReadF(&srcFil, inbuf, 512, &offLastCh);
-            if (offLastCh == 0) {
-                return *inChrP = ISISEOF;       // EOF
-            } else
-                offLastCh--;    // base from 0
+
+    if (offCurCh == offLastCh) {
+        offCurCh = 0;
+        ReadF(&srcFil, inbuf, 512, &offLastCh);
+        if (offLastCh == 0) {
+            return *inChrP = ISISEOF;       // EOF
         } else
-            offCurCh++;
-        c = inbuf[offCurCh];
-        if (c > 0x7f)
-            c = 0x7f;
-    } while (c == '\r'); // make sure parity stripped & skip cr
+            offLastCh--;    // base from 0
+    } else
+        offCurCh++;
+    c = inbuf[offCurCh];
+    if (c > 0x7f)
+        c = 0x7f;
     return *inChrP = c;
 }
 
@@ -1184,10 +1181,10 @@ static void GetCodeLine()
             return;
         } else {
             CloseF(&srcFil);                // close nested file & reload caller file at saved position
-            srcFileIdx = srcFileIdx - 11;
+            srcFileIdx = srcFileIdx - SRC_ENTRY_WORDS;
             InitF(&srcFil, (pointer)"SOURCE", (pointer)&srcFileTable[srcFileIdx]);
             OpenF(&srcFil, 1);
-            SeekF(&srcFil, (loc_t *)&srcFileTable[srcFileIdx + 9]);
+            SeekF(&srcFil, (loc_t *)&srcFileTable[srcFileIdx + SRC_LOC_OFF]);
             offCurCh = offLastCh;           // force buffer reload
         }
     }
