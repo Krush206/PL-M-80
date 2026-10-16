@@ -163,8 +163,8 @@ void Sub_423C()
     Z80_End();
 
     if (PRINT) {
-        TellF(&srcFil, (loc_t *)&srcFileTable[srcFileIdx + 9]);
-        Backup((loc_t *)&srcFileTable[srcFileIdx + 9], offLastCh - offCurCh);
+        TellF(&srcFil, (loc_t *)&srcFileTable[srcFileIdx + SRC_LOC_OFF]);
+        Backup((loc_t *)&srcFileTable[srcFileIdx + SRC_LOC_OFF], offLastCh - offCurCh);
         CloseF(&srcFil);
         FlushLstBuf();
     }
