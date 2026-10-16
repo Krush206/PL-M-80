@@ -62,6 +62,18 @@ enum {IOPEN = 0, ICLOSE = 1, IDELETE = 2, IREAD = 3, IWRITE = 4,
 
 #define FILE_NAME_LEN   17
 
+/* Plain Unix paths: no :Fn: devices, no 8.3 splitting, case preserved.
+   Fixed-size slots below hold one space-padded path (trailing spaces are
+   stripped when the file is opened); the $INCLUDE record in the lex stream
+   carries a single NAME_SLOT-byte payload after its marker byte. */
+#define NAME_SLOT 252
+/* srcFileTable entries: one NAME_SLOT-byte padded name plus a 2-word file
+   location; 6 entries (the main source plus 5 nested $INCLUDEs) */
+#define SRC_ENTRY_WORDS ((NAME_SLOT) / 2 + 2)
+#define SRC_TABLE_WORDS (6 * SRC_ENTRY_WORDS)
+#define SRC_LOC_OFF     ((NAME_SLOT) / 2)
+#define SRC_MAX_IDX     (5 * SRC_ENTRY_WORDS)
+
 /*
   maximum length of a command tail line, including <CR><LF>.
   The length is stored in a byte by GetCmdLine(), so 253 + 2 is the
@@ -482,18 +494,9 @@ typedef union {
 } address;
 
 typedef struct {
-    byte deviceId;
-    byte name[8];
-    byte ext[3];
-    byte deviceType;
-    byte driveType;
-    byte dir[ISIS_PATH_LEN];    /* directory part of the name, if any */
-} spath_t;
-
-typedef struct {
     word aftn;
     byte sNam[6];
-    byte fNam[18];
+    byte fNam[NAME_SLOT + 4];
     pointer bufP;
     word bsize;
     word actual;
@@ -666,7 +669,6 @@ word Start6();
 /* plmA.plm */
 extern pointer cmdTextP;
 void SignOnAndGetSourceName();
-void isis2dos(char *src, char *dst);
 
 
 /* plmb.plm */
@@ -1442,7 +1444,7 @@ extern byte PWIDTH;
 extern word REBOOTVECTOR;
 extern file_t srcFil;
 extern word srcFileIdx;
-extern word srcFileTable[];     /* 6 * (8 words fNam, blkNum, bytNum) */
+extern word srcFileTable[];     /* SRC_TABLE_WORDS: NAME_SLOT-byte names + loc */
 extern byte srcStemLen;
 extern byte srcStemName[];
 extern bool standAlone;
@@ -1594,11 +1596,13 @@ void movmem(address cnt,address src,address dst);
 /* Open.plm */
 void Open(wpointer connP, pointer pathP, word access, word echo, wpointer statusP);
 
-/* io.c - Unix/Linux: set the directory that files on an ISIS device are
-   looked up in when their own name does not carry a directory part.
-   Used for the source file name, so that output files are created next
-   to the source. */
-void SetDevDir(const char *dev, const char *dir, const char *name);
+/* io.c - Unix: remember the directory the source file was found in, so that
+   the object, listing and index files are created next to the source. */
+void SetSrcDir(const char *dir, const char *name);
+
+/* io.c - parse an org() address: Intel hex with H suffix (0100h), 0x hex,
+   decimal.  Returns true and stores 0..0xFFFF in *out on success. */
+bool parseOrgAddr(const char *s, word *out);
 
 /* OpenF.plm */
 void OpenF(file_t *fileP,byte access);
