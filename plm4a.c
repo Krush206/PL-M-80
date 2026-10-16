@@ -628,7 +628,9 @@ static void SetNewAddr()
 
 void MiscCntrl()
 {
-    byte name[20];
+    byte name[NAME_SLOT + 2];
+    byte marker;
+    word off;
 
     switch (cfCode) {
     case T2_LIST: listOff = false; break;
@@ -641,13 +643,16 @@ void MiscCntrl()
             break;
     case T2_INCLUDE:
             EmitLinePrefix();
-            TellF(&srcFil, (loc_t *)&srcFileTable[srcFileIdx + 9]);
-            Backup((loc_t *)&srcFileTable[srcFileIdx + 9], offLastCh - offCurCh);
-            srcFileIdx = srcFileIdx + 11;
-            Fread(&tx1File, &name[13], 6);      /* Read() in name of include file */
-            Fread(&tx1File, &name[6], 7);
-            Fread(&tx1File, &name[0], 7);       /* overwrites the type byte */
-            memmove((pointer)&srcFileTable[srcFileIdx], &name[1], 18);
+            TellF(&srcFil, (loc_t *)&srcFileTable[srcFileIdx + SRC_LOC_OFF]);
+            Backup((loc_t *)&srcFileTable[srcFileIdx + SRC_LOC_OFF], offLastCh - offCurCh);
+            srcFileIdx = srcFileIdx + SRC_ENTRY_WORDS;
+            Fread(&tx1File, &name[1 + NAME_SLOT - 6], 6);   /* Read() in name of include file */
+            for (off = NAME_SLOT - 6; off > 0; ) {
+                off -= 6;
+                Fread(&tx1File, &marker, 1);
+                Fread(&tx1File, &name[1 + off], 6);
+            }
+            memmove((pointer)&srcFileTable[srcFileIdx], &name[1], NAME_SLOT);
             CloseF(&srcFil);
             InitF(&srcFil, (pointer)"SOURCE", &name[1]);
             OpenF(&srcFil, 1);
