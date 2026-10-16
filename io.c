@@ -49,7 +49,6 @@
 #include <unistd.h>
 #include <errno.h>
 #include <dirent.h>
-#include <strings.h>               /* strcasecmp() */
 #define _MAX_PATH 4096
 #define O_BINARY    0
 #endif
@@ -60,7 +59,7 @@
 #define RANDOM_ACCESS   4       // additional access mode
 
 typedef struct {
-    byte        deviceId; // isis device Id
+    byte        deviceId; // 23 for the :CI: console, 0 for plain files
     byte        modes;    // supported modes READ_MODE, WRITE_MODE, UPDATE_MODE and RANDOM_ACCESS
     byte        name[_MAX_PATH];
     byte        altName[_MAX_PATH]; // other place to look when reading (Unix)
@@ -95,12 +94,11 @@ static struct {
     byte pendCR;                // a <CR> is waiting for the byte after it
 } aft[AFTSIZE] = { { 1 , WRITE_MODE, TEXT_CONSOLE, 0 }, {0, READ_MODE, 0, 0}, {0, UPDATE_MODE, 0, 0} };      // CO, CI, BB
 
-/* Directory that files on an ISIS device are looked up in when the file name
-   itself carries no directory.  Set from the source file name, so that the
-   object, listing and index files are created next to the source. */
-static int  srcDirDev = -1;
+/* Directory that plain Unix paths are looked up in when the file name itself
+   carries no directory (see above). */
+static bool srcDirSet = false;
 static char srcDir[ISIS_PATH_LEN];
-static char srcBase[16];    /* the source file name itself, to tell the
+static char srcBase[NAME_SLOT + 4];    /* the source file name itself, to tell the
                                source open apart from an $INCLUDE of a file
                                with the same name */
 
@@ -109,103 +107,6 @@ static char *_commandLinePtr;
 word ovl = 255;   // current ovl
 
 int errorLevel;
-
-struct {
-    char *dev;
-    unsigned char devtype;
-} deviceMap[] = {
-    { "F0", 3 },{ "F1", 3 },{ "F2", 3 },{ "F3", 3 },    // 0 - 3
-    { "F4", 3 },{ "F5", 3 },{ "TI", 0 },{ "TO", 1 },    // 4 - 7
-    { "VI", 0 },{ "VO", 1 },{ "I1", 0 },{ "O1", 1 },    // 8 - 11
-    { "TR", 0 },{ "HR", 0 },{ "R1", 0 },{ "R2", 0 },    // 12 - 15
-    { "TP", 1 },{ "HP", 1 },{ "P1", 1 },{ "P2", 1 },    // 16 - 19
-    { "LP", 1 },{ "L1", 1 },{ "BB", 2 },{ "CI", 0 },    // 20 - 23
-    { "CO", 1 },{ "F6", 3 },{ "F7", 3 },{ "F8", 3 },    // 24 - 27
-    { "F9", 3 } };                                                                              // 28
-
-const int nDevices = (sizeof(deviceMap) / sizeof(deviceMap[0]));
-
-/* characters allowed in a file name or extension.  '_' and '-' are not part
-   of the ISIS charset, but are common in Unix file names, and ' ' is allowed
-   in a quoted name (trailing padding spaces are removed before parsing) */
-static bool isNameChar(int ch)
-{
-    return isalnum((unsigned char)ch) != 0 || ch == '_' || ch == '-' || ch == ' ';
-}
-
-/* preps the deviceId and filename of an spath info record
-   returns standard error codes as appropriate
-*/
-static word ParseIsisName(spath_t *pInfo, const char *isisPath)
-{
-    int i;
-    char dev[3];
-    const char *base;
-    const char *end;        /* end of the name, after any padding */
-    const char *slash = NULL;
-    size_t len;
-
-    /* names come space padded from the file tables - drop that, but keep
-       spaces that are part of the name itself */
-    len = strlen(isisPath);
-    while (len > 0 && isisPath[len - 1] == ' ')
-        len--;
-    end = isisPath + len;
-
-    strcpy(dev,"F0");   // default device is F0
-
-    memset(pInfo, 0, sizeof(spath_t));
-    pInfo->deviceId = 0xff;             // prefill incase of error
-
-    if (isisPath[0] == ':') {   // check for :XX:
-        if (end - isisPath < 4 || isisPath[3] != ':')
-            return ERROR_BADFILENAME;
-        dev[0] = toupper((unsigned char)isisPath[1]);
-        dev[1] = toupper((unsigned char)isisPath[2]);
-        isisPath += 4;
-    }
-
-    for (i = 0; i < nDevices; i++) // look up device
-        if (strcmp(dev, deviceMap[i].dev) == 0)
-            break;
-    if (i >= nDevices)
-        return ERROR_BADDEVICE;
-    pInfo->deviceId = i;
-    pInfo->deviceType = deviceMap[i].devtype;
-
-    base = isisPath;
-    if (pInfo->deviceType == 3) { // parse file name if file device
-        /* Unix: a name may carry a directory part, e.g. src/prog.plm */
-        for (i = 0; base + i < end; i++)
-            if (base[i] == '/' || base[i] == '\\')
-                slash = base + i;
-        if (slash != NULL) {
-            if (slash == base)          /* /prog.plm - the root directory */
-                strcpy((char *)pInfo->dir, "/");
-            else {
-                len = (size_t)(slash - base);
-                if (len >= sizeof(pInfo->dir))
-                    return ERROR_BADFILENAME;
-                memcpy(pInfo->dir, base, len);
-                pInfo->dir[len] = 0;
-            }
-            base = slash + 1;
-        }
-
-        for (i = 0; i < 8 && base < end && isNameChar(*base); i++)
-            pInfo->name[i] = toupper((unsigned char)*base++);
-        if (i == 0)
-            return ERROR_BADFILENAME;
-        if (base < end && *base == '.') {
-            base++;
-            for (i = 0; i < 3 && base < end && isNameChar(*base); i++)
-                pInfo->ext[i] = toupper((unsigned char)*base++);
-            if (i == 0)
-                return ERROR_BADEXT;
-        }
-    }
-    return base < end && isNameChar(*base) ? ERROR_BADFILENAME : ERROR_SUCCESS;
-}
 
 /* append a component to a path, inserting a '/' only where one is needed */
 static int addPart(char *dst, size_t size, const char *part)
@@ -227,158 +128,107 @@ static int addPart(char *dst, size_t size, const char *part)
     return 0;
 }
 
-#ifndef _WIN32
-static int scanDir(const char *dir, const char *base, char *out, size_t size);
 
-/* Look a path up as it exists on a case sensitive file system: every
-   component that is not there as written is matched ignoring case, so that
-   SRC/PROG.PLM finds src/prog.plm.  The path is left alone when nothing
-   matches, as it may be a file that is about to be created. */
-static void resolvePath(char *path, size_t size)
+
+
+static word MapFile(osfile_t *osfileP, const char *path)
 {
-    char comp[_MAX_PATH];
-    char cand[_MAX_PATH];
-    char resolved[_MAX_PATH];
-    const char *p;
-    const char *slash;
-    size_t n;
-
-    if (*path == 0 || access(path, F_OK) == 0)
-        return;
-
-    p = path;
-    if (*p == '/')
-        strcpy(resolved, "/");
-    else
-        resolved[0] = 0;
-
-    while (*p == '/')
-        p++;
-
-    while (*p != 0) {
-        slash = strchr(p, '/');
-        n = slash != NULL ? (size_t)(slash - p) : strlen(p);
-        if (n >= sizeof comp)
-            return;
-        memcpy(comp, p, n);
-        comp[n] = 0;
-
-        snprintf(cand, sizeof cand, "%s", resolved);
-        if (addPart(cand, sizeof cand, comp) != 0)
-            return;
-        if (access(cand, F_OK) != 0)
-            scanDir(resolved, comp, cand, sizeof cand);    /* cand gets the name from disk */
-        snprintf(resolved, sizeof resolved, "%s", cand);
-
-        if (slash == NULL)
-            break;
-        for (p = slash + 1; *p == '/'; p++)        /* skip repeated separators */
-            ;
-    }
-    if (strcmp(path, resolved) != 0 && strlen(resolved) < size)
-        strcpy(path, resolved);
-}
-#endif
-
-
-/*
-    map an isis file into a real file
-    the realFile contains is prefixed with two bytes
-    deviceId and deviceType
-    return isis error status
- */
-
-static word MapFile(osfile_t *osfileP, const char *isisPath)
-{
-    spath_t info;
-    const char *src;
-    char buf[8];
-    char base[16];
+    /* Plain Unix paths: case preserved, no devices, no 8.3 splitting.
+       Table and control names arrive space padded (fixed slots); only the
+       padding is stripped.  The sole :XX: form still recognised is the :CI:
+       console that feeds the command tail. */
+    char clean[NAME_SLOT + 4];
+    char base[NAME_SLOT + 4];
     char dir[ISIS_PATH_LEN];
-    char *s;
-    int status;
-    int i;
-    static byte modes[] = { READ_MODE, WRITE_MODE, UPDATE_MODE, UPDATE_MODE + RANDOM_ACCESS };
+    const char *slash;
+    const char *back;
+    size_t len;
 
-    if ((status = ParseIsisName(&info, isisPath)) != ERROR_SUCCESS) // get canocial name
-        return status;
+    len = strlen(path);
+    while (len > 0 && path[len - 1] == ' ')
+        len--;
+    if (len >= sizeof clean)
+        return ERROR_BADFILENAME;
+    memcpy(clean, path, len);
+    clean[len] = 0;
 
-    osfileP->deviceId = info.deviceId;
-    osfileP->modes = modes[info.deviceType];
-
-    if (22 <= info.deviceId && info.deviceId <= 24) // BB, CI, CO
-        return ERROR_SUCCESS;
-
-    /* see if user has provided a device map */
-    snprintf(buf, sizeof buf, ":%s:", deviceMap[info.deviceId].dev);    // look for any mapping provided
-    src = getenv(buf);
-
-    if (info.deviceType != 3) {     /* not a file device - the mapping is the device itself */
-        if (src == NULL || *src == 0) {
-            fprintf(stderr, "No mapping for :%s:\n", deviceMap[info.deviceId].dev);
-            return ERROR_NOTREADY;
+    if (clean[0] == ':') {
+        if ((clean[1] == 'C' || clean[1] == 'c') &&
+            (clean[2] == 'I' || clean[2] == 'i') &&
+            clean[3] == ':' && clean[4] == 0) {
+            osfileP->deviceId = 23; /* CI, see Open() */
+            osfileP->modes = READ_MODE;
+            osfileP->altName[0] = 0;
+            return ERROR_SUCCESS;
         }
-        snprintf((char *)osfileP->name, sizeof osfileP->name, "%s", src);
-        return ERROR_SUCCESS;
+        return ERROR_BADDEVICE;
     }
 
-    /* file devices: names are lower cased, as Unix file systems are
-       case sensitive and the compiler generates them itself */
-    for (s = base, i = 0; i < 8 && info.name[i]; i++)
-        *s++ = tolower(info.name[i]);
-    if (info.ext[0]) {
-        *s++ = '.';
-        for (i = 0; i < 3 && info.ext[i]; i++)
-            *s++ = tolower(info.ext[i]);
-    }
-    *s = 0;
+    osfileP->deviceId = 0;
+    osfileP->modes = UPDATE_MODE + RANDOM_ACCESS;
 
-    /* Directory of the name itself, or - when the name carries none - the
-       directory the source file name was taken from, so that the output
-       files land next to the source.  An absolute directory replaces the
-       device mapping, as it does on Unix. */
-    if ((char)info.dir[0] == '/') {
-        snprintf(dir, sizeof dir, "%s", (char *)info.dir);
+    slash = strrchr(clean, '/');
+    back = strrchr(clean, '\\');
+    if (back != NULL && (slash == NULL || back > slash))
+        slash = back;
+    if (slash != NULL) {
+        if (slash == clean)             /* /prog.plm - the root directory */
+            strcpy(dir, "/");
+        else {
+            len = (size_t)(slash - clean);
+            if (len >= sizeof dir)
+                return ERROR_BADFILENAME;
+            memcpy(dir, clean, len);
+            dir[len] = 0;
+        }
+        snprintf(base, sizeof base, "%s", slash + 1);
     } else {
         dir[0] = 0;
-        if (info.dir[0] == 0 && info.deviceId == srcDirDev) {
-            if (addPart(dir, sizeof dir, srcDir) != 0)
-                return ERROR_BADFILENAME;
-        } else if (addPart(dir, sizeof dir, (char *)info.dir) != 0) {
+        snprintf(base, sizeof base, "%s", clean);
+    }
+    if (base[0] == 0)
+        return ERROR_BADFILENAME;
+
+    /* Directory of the name itself, or - when the name carries none - the
+       directory the source file came from, so that the output files land
+       next to the source. */
+    {
+        char useDir[ISIS_PATH_LEN];
+
+        if (dir[0] == '/')
+            snprintf(useDir, sizeof useDir, "%s", dir);
+        else if (dir[0] == 0 && srcDirSet)
+            snprintf(useDir, sizeof useDir, "%s", srcDir);
+        else
+            snprintf(useDir, sizeof useDir, "%s", dir);
+        osfileP->name[0] = 0;
+        if (addPart((char *)osfileP->name, sizeof osfileP->name, useDir) != 0 ||
+            addPart((char *)osfileP->name, sizeof osfileP->name, base) != 0)
             return ERROR_BADFILENAME;
-        }
     }
 
-    osfileP->name[0] = 0;
-    if (dir[0] != '/' && addPart((char *)osfileP->name, sizeof osfileP->name, src) != 0)
-        return ERROR_BADFILENAME;
-    if (addPart((char *)osfileP->name, sizeof osfileP->name, dir) != 0 ||
-        addPart((char *)osfileP->name, sizeof osfileP->name, base) != 0)
-        return ERROR_BADFILENAME;
-
-    /* Unix: record the other place this file may be found when reading.
-       A name with a directory is looked up in the current directory first,
-       so the source directory is the alternative; a name without one was
-       looked up in the source directory first (except for the source file
-       itself, which is named explicitly), so the current directory is the
+    /* Record the other place this file may be found when reading.  A name
+       with a directory is looked up in the current directory first, so the
+       source directory is the alternative; a name without one was looked
+       up in the source directory first (except for the source file itself,
+       which is named explicitly), so the current directory is the
        alternative.  Writes always use the primary name. */
     osfileP->altName[0] = 0;
-    if (info.deviceId == srcDirDev && srcDir[0] != 0 && (char)info.dir[0] != '/' &&
-            !(info.dir[0] == 0 && srcBase[0] != 0 &&
-              strcasecmp(base, srcBase) == 0)) {
+    if (srcDirSet && srcDir[0] != 0 && dir[0] != '/' &&
+            !(dir[0] == 0 && srcBase[0] != 0 &&
+              strcmp(base, srcBase) == 0)) {
         char altDir[ISIS_PATH_LEN];
 
         altDir[0] = 0;
-        if (info.dir[0] != 0 &&
+        if (dir[0] != 0 &&
             (addPart(altDir, sizeof altDir, srcDir) != 0 ||
-             addPart(altDir, sizeof altDir, (char *)info.dir) != 0))
+             addPart(altDir, sizeof altDir, dir) != 0))
             altDir[0] = 0;
-        if (info.dir[0] == 0 || altDir[0] != 0) {
+        if (dir[0] == 0 || altDir[0] != 0) {
             char alt[_MAX_PATH];
 
             alt[0] = 0;
-            if ((altDir[0] != '/' && addPart(alt, sizeof alt, src) != 0) ||
-                addPart(alt, sizeof alt, altDir) != 0 ||
+            if (addPart(alt, sizeof alt, altDir) != 0 ||
                 addPart(alt, sizeof alt, base) != 0)
                 alt[0] = 0;
             if (alt[0] != 0 && strcmp(alt, (char *)osfileP->name) != 0)
@@ -386,31 +236,14 @@ static word MapFile(osfile_t *osfileP, const char *isisPath)
                          "%s", alt);
         }
     }
-
-#ifndef _WIN32
-    resolvePath((char *)osfileP->name, sizeof osfileP->name);
-    if (osfileP->altName[0] != 0)
-        resolvePath((char *)osfileP->altName, sizeof osfileP->altName);
-#endif
     return ERROR_SUCCESS;
 }
 
-/* Unix: remember the directory the source file was found in, so that the
-   object, listing and index files are created next to it */
-void SetDevDir(const char *dev, const char *dir, const char *name)
+/* Remember the directory the source file was found in, so that the object,
+   listing and index files are created next to it */
+void SetSrcDir(const char *dir, const char *name)
 {
-    char d[3];
-    int i;
-
-    d[0] = toupper((unsigned char)dev[0]);
-    d[1] = toupper((unsigned char)dev[1]);
-    d[2] = 0;
-    for (i = 0; i < nDevices; i++)
-        if (strcmp(d, deviceMap[i].dev) == 0)
-            break;
-    if (i >= nDevices || deviceMap[i].devtype != 3)
-        return;
-    srcDirDev = i;
+    srcDirSet = true;
     snprintf(srcDir, sizeof srcDir, "%s", dir);
     snprintf(srcBase, sizeof srcBase, "%s", name);
 }
@@ -421,15 +254,15 @@ static int textOut(const char *name)
 {
     const char *p = strrchr(name, '.');
 
-    return p != NULL && strcasecmp(p, ".lst") == 0;
+    return p != NULL && strcmp(p, ".lst") == 0;
 }
 #endif
 
 
 
-/* Parse a -o address: Intel hex with H suffix (0100h), 0x hex, decimal.
+/* Parse an org() address: Intel hex with H suffix (0100h), 0x hex, decimal.
    Returns true and stores 0..0xFFFF in *out on success. */
-static bool parseOrgAddr(const char *s, word *out)
+bool parseOrgAddr(const char *s, word *out)
 {
     size_t n = strlen(s);
     unsigned long v;
@@ -500,20 +333,6 @@ int main(int argc, char **argv)
     len = strlen(_commandLine);
 
     for (i = 1; i < argc && len + strlen(argv[i]) + 1 < MAXLL - 2; i++) {       // add args if room
-            if (strcmp(argv[i], "-h") == 0) {
-                z80header = true;       // Sega Master System cartridge header
-                continue;
-            }
-            if (strncmp(argv[i], "-o", 2) == 0) {
-                const char *aval = argv[i][2] ? argv[i] + 2 :
-                    (i + 1 < argc ? argv[++i] : NULL);
-                if (!aval || !parseOrgAddr(aval, &z80orgAddr)) {
-                    fprintf(stderr, "plm80c: -o needs an address (e.g. -o 0100h)\n");
-                    return 2;
-                }
-                z80orgSet = true;       // initial org address of the .asm output
-                continue;
-            }
             len += strlen(argv[i]) + 1;
             strcat(_commandLine, " ");
             strcat(_commandLine, argv[i]);
@@ -709,39 +528,11 @@ NORETURN(Exit())
     exit(1);
 }
 
-void Load(pointer pathP, word LoadOffset, word swt, wpointer entryP, wpointer statusP)
-{
-    fprintf(stderr, "load not implmented\n");
-    exit(1);
-}
-
-
 #ifndef _WIN32
-/* look for 'base' in 'dir', ignoring case, and return the full name */
-static int scanDir(const char *dir, const char *base, char *out, size_t size)
-{
-    DIR *dp;
-    struct dirent *de;
-    int found = 0;
 
-    if ((dp = opendir(*dir != 0 ? dir : ".")) == NULL)
-        return 0;
-    while ((de = readdir(dp)) != NULL) {
-        if (strcasecmp(de->d_name, base) != 0)
-            continue;
-        *out = 0;
-        if (addPart(out, size, dir) == 0 && addPart(out, size, de->d_name) == 0)
-            found = 1;
-        break;
-    }
-    closedir(dp);
-    return found;
-}
-
-/* Open a file for reading.  Two Unix habits are tolerated: the .plm
-   extension may be left off the command line and the case of the name on
-   disk may differ from the one given (file systems here are case
-   sensitive). */
+/* Open a file for reading.  The .plm extension may be left off the
+   command line (source files are normally .plm); anything else is opened
+   exactly as written. */
 static int openRead(const char *name, int mode, int perm)
 {
     char dir[_MAX_PATH], base[_MAX_PATH], cand[_MAX_PATH + 8], path[_MAX_PATH];
@@ -780,12 +571,6 @@ static int openRead(const char *name, int mode, int perm)
             return fd;
         if (errno != ENOENT && errno != ENOTDIR)
             return -1;
-        if (scanDir(dir, cand, path, sizeof path)) {
-            if ((fd = open(path, mode, perm)) >= 0)
-                return fd;
-            if (errno != ENOENT)
-                return -1;
-        }
     }
     errno = ENOENT;
     return -1;
@@ -817,16 +602,8 @@ void Open(wpointer connP, pointer pathP, word access, word echo, wpointer status
         return;
     }
 
-    if (osfile.deviceId == 23) { // CI
+    if (osfile.deviceId == 23) { // CI, the console behind the command tail
         *connP = CI_DEV;
-        return;
-    }
-    else if (osfile.deviceId == 24) { // CO
-        *connP = CO_DEV;
-        return;
-    }
-    else if (osfile.deviceId == 22) { // BB
-        *connP = BB_DEV;
         return;
     }
 
@@ -1082,15 +859,6 @@ void Rename(pointer oldP, pointer newP, wpointer statusP)
         case EINVAL: *statusP = ERROR_BADFILENAME; break;
         default: *statusP = ERROR_BADPARAM; break;
         }
-}
-
-
-void Spath(pointer pathP, spath_t *infoP, wpointer statusP)
-{
-    if ((*statusP = ParseIsisName(infoP, (const char *)pathP)) != ERROR_SUCCESS)
-        return;
-    if (infoP->deviceType == 3)
-        infoP->driveType = 4;
 }
 
 
