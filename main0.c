@@ -34,8 +34,8 @@ static void FinishLexPass()
     WriteLineInfo();
     WrByte(L_EOF);
     RewindTx1();
-    TellF(&srcFil, (loc_t *)&srcFileTable[srcFileIdx + 9]);
-    Backup((loc_t *)&srcFileTable[srcFileIdx + 9], offLastCh - offCurCh);
+    TellF(&srcFil, (loc_t *)&srcFileTable[srcFileIdx + SRC_LOC_OFF]);
+    Backup((loc_t *)&srcFileTable[srcFileIdx + SRC_LOC_OFF], offLastCh - offCurCh);
     CloseF(&srcFil);
 } /* FinishLexPass() */
 
@@ -49,7 +49,7 @@ static void ParseCommandLine()
 {
     InitF(&srcFil, (pointer)"SOURCE", (pointer)&srcFileTable[srcFileIdx]);
     OpenF(&srcFil, 1);
-    SeekF(&srcFil,  (loc_t *)&srcFileTable[srcFileIdx + 9]);
+    SeekF(&srcFil,  (loc_t *)&srcFileTable[srcFileIdx + SRC_LOC_OFF]);
     offCurCh = offLastCh;
     if (offFirstChM1 != 0)
         while (cmdLineP != NULL) {
