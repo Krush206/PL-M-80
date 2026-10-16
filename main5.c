@@ -606,11 +606,8 @@ void CreateIxrefFile()
         Sub_4EAA(&PstrP(curSymbolP)->len, 1);           /* module name len */
         Sub_4EAA(PstrP(curSymbolP)->str, PstrP(curSymbolP)->len);       /* module name */
     }
-    if (Low(srcFileTable[0]) == ':')
-        j = 2;
-    else
-        j = 0;
-    Sub_4EAA((pointer)&srcFileTable[j], 12);            /* fileName minus any :fx: */
+    j = 0;
+    Sub_4EAA((pointer)&srcFileTable[j], 12);            /* start of the file name */
     Sub_4EAA((pointer)"-------", 7);
 
     for (p = 1; p <= dictSize; p++) {
