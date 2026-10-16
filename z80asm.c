@@ -2128,37 +2128,28 @@ void Z80_DataFlush(void)
 /* ---------------- begin / end ---------------- */
 void Z80_Begin(void)
 {
-    char tmp[20];
-    size_t i, dot = 0;
+    char tmp[NAME_SLOT + 8];
+    size_t i = 0, dot = 0;
     bool haveDot = false;
     word status;
     if (!OBJECT)
         return;
     z80haveMain = haveModuleLevelUnit ? true : false;
-    /* derive "<stem>.ASM" from the object file name */
-    for (i = 0; i < 16 && objFile.fNam[i] != 0; i++) {
+    /* derive "<stem>.asm" from the object file name (plain Unix path) */
+    while (objFile.fNam[i] != 0 && objFile.fNam[i] != ' ' &&
+           i < sizeof tmp - 5) {
         char c = (char)objFile.fNam[i];
-        if (c == ' ')
-            break;
         tmp[i] = c;
         if (c == '.') {
             dot = i;
             haveDot = true;
         }
+        i++;
     }
+    if (haveDot)
+        i = dot;
     tmp[i] = 0;
-    if (haveDot) {
-        size_t k = dot + 1;
-        const char *ext = "ASM";
-        while (*ext && k < 16)
-            tmp[k++] = *ext++;
-        tmp[k] = 0;
-    } else {
-        if (i > 12)
-            i = 12;
-        tmp[i] = 0;
-        snprintf(tmp + i, sizeof tmp - i, ".ASM");
-    }
+    snprintf(tmp + i, sizeof tmp - i, ".asm");
     InitF(&asmFile, (pointer)"ASM   ", (pointer)tmp);
     Open(&asmFile.aftn, asmFile.fNam, 2, 0, &status);
     if (status != 0) {
