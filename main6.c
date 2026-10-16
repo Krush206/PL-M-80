@@ -139,8 +139,8 @@ void Sub_41B6()
     }
     linesRead = lineCnt;
     if (PRINT) {
-        TellF(&srcFil, (loc_t *)&srcFileTable[srcFileIdx + 9]);
-        Backup((loc_t *)&srcFileTable[srcFileIdx + 9], offLastCh - offCurCh);
+        TellF(&srcFil, (loc_t *)&srcFileTable[srcFileIdx + SRC_LOC_OFF]);
+        Backup((loc_t *)&srcFileTable[srcFileIdx + SRC_LOC_OFF], offLastCh - offCurCh);
         CloseF(&srcFil);
         FlushLstBuf();
     }
