@@ -47,7 +47,7 @@ EOF
 # same program, with CRLF line endings
 sed 's/$/\r/' "$TMP/hello.plm" > "$TMP/crlf.plm"
 
-# an 8.3 name that is 9 characters long: must be rejected
+# a 9 character name: fine without 8.3 limits (used by the limits test)
 cp "$TMP/hello.plm" "$TMP/toolongname.plm"
 
 # $INCLUDE variants (a '$' control must start in column 1)
@@ -120,7 +120,7 @@ check "quoted name with a space in the directory works" test -f "$run/sub dir/he
 check "deep path works, outputs next to source" test -f "$run/deep/deeper/deepest/hello.obj"
 cp "$TMP/hello.plm" "$run/MIXEDPLM.PLM"
 ( cd "$run" && "$PLM" "MIXEDPLM.PLM" ) >/dev/null 2>&1
-check "8 character upper-case name works" test -f "$run/mixedplm.lst"
+check "upper-case name works, case preserved" test -f "$run/MIXEDPLM.lst"
 ( cd "$run" && "$PLM" noext ) >/dev/null 2>&1
 check "missing .PLM extension accepted" test -f "$run/noext.lst"
 cp "$TMP/hello.plm" "$run/abs.plm"
@@ -131,27 +131,37 @@ cp "$TMP/hello.plm" "$run/guard.plm"
 rc=$?
 check "missing source exits nonzero, even with a same-named file in the cwd" test "$rc" -ne 0
 
-echo "== 8.3 name limits"
+echo "== long file names (no 8.3 limits)"
 run="$TMP/limits"
 mkdir -p "$run"
 cp "$TMP/toolongname.plm" "$run/"
-( cd "$run" && "$PLM" toolongname.plm ) > "$run/out.txt" 2>&1
+( cd "$run" && "$PLM" toolongname.plm ) >/dev/null 2>&1
+check "source base name > 8 accepted" test -f "$run/toolongname.obj"
+long=$(printf 'a%.0s' $(seq 1 200))
+cp "$TMP/hello.plm" "$run/$long.plm"
+( cd "$run" && "$PLM" "$long.plm" ) >/dev/null 2>&1
+check "200 character source names accepted" test -f "$run/$long.obj"
+toolong=$(printf 'a%.0s' $(seq 1 260))
+( cd "$run" && "$PLM" "$toolong.plm" ) > "$run/out.txt" 2>&1
 rc=$?
-check "source base name > 8 rejected" test "$rc" -ne 0
+check "over-long source names rejected" test "$rc" -ne 0
 if grep -qi 'SOURCE FILE NAME INCORRECT' "$run/out.txt"; then
     ok "reports fatal for over-long name"
 else
     no "reports fatal for over-long name"
 fi
 
-echo "== case-insensitive read, lower-case write"
+echo "== case-sensitive paths, case preserved"
 run="$TMP/case"
 mkdir -p "$run"
 cp "$TMP/hello.plm" "$run/Mixed.plm"
-( cd "$run" && "$PLM" mixed.plm ) >/dev/null 2>&1
-check "lower-case argument finds Mixed.plm" test -f "$run/mixed.lst"
-check "created names are lower-cased" test -f "$run/mixed.obj"
+( cd "$run" && "$PLM" Mixed.plm ) >/dev/null 2>&1
+check "exact-case argument works" test -f "$run/Mixed.lst"
+check "created names keep their case" test -f "$run/Mixed.obj"
 check "source name untouched" test -f "$run/Mixed.plm"
+( cd "$run" && "$PLM" mixed.plm ) >/dev/null 2>&1
+rc=$?
+check "wrong-case argument no longer finds Mixed.plm" test "$rc" -ne 0
 
 echo "== controls"
 run="$TMP/ctrl"
@@ -213,16 +223,16 @@ printf 'NOSUCH: DO;\nEND NOSUCH;\n' > "$run/decoy.plm"
 rc=$?
 check "missing source is not silently taken from the cwd" test "$rc" -ne 0
 
-echo "== :F1: device mapping"
+echo "== device specs are gone"
 run="$TMP/dev"
 mkdir -p "$run/src"
 cp "$TMP/hello.plm" "$run/src/"
 cp "$TMP/hello.plm" "$run/"
-( cd "$run" && F1="$run/src" "$PLM" ':F1:hello.plm' ) >/dev/null 2>&1
-check ":F1: honoured via environment" test -f "$run/hello.lst"
-( cd "$run" && env -u F1 "$PLM" ':F2:hello.plm' ) >/dev/null 2>&1
+( cd "$run" && "$PLM" 'src/hello.plm' ) >/dev/null 2>&1
+check "plain subdir path works" test -f "$run/src/hello.lst"
+( cd "$run" && "$PLM" ':F1:hello.plm' ) >/dev/null 2>&1
 rc=$?
-check "unmapped device falls back to cwd" test "$rc" -eq 0
+check ":Fn: device specs are rejected" test "$rc" -ne 0
 
 echo "== z80asm output"
 run="$TMP/z80asm"
@@ -245,16 +255,19 @@ echo "== z80asm options -o -h"
 run="$TMP/z80opt"
 mkdir -p "$run"
 cp "$TMP/hello.plm" "$run/"
-( cd "$run" && "$PLM" hello.plm -o 0100h ) >/dev/null 2>&1
-check "-o sets the org address" grep -q '^	org	100H' "$run/hello.asm"
-( cd "$run" && "$PLM" hello.plm -o xyz ) >/dev/null 2>&1
+( cd "$run" && "$PLM" hello.plm 'org(0100h)' ) >/dev/null 2>&1
+check "org() sets the org address" grep -q '^	org	100H' "$run/hello.asm"
+( cd "$run" && "$PLM" hello.plm 'org(xyz)' ) >/dev/null 2>&1
 rc=$?
-check "bad -o address exits nonzero" test "$rc" -ne 0
+check "bad org() address exits nonzero" test "$rc" -ne 0
+( cd "$run" && "$PLM" hello.plm smsheader ) >/dev/null 2>&1
+check "smsheader adds the SMS header" grep -q 'TMR SEGA' "$run/hello.asm"
 ( cd "$run" && "$PLM" hello.plm -h ) >/dev/null 2>&1
-check "-h adds the SMS header" grep -q 'TMR SEGA' "$run/hello.asm"
+rc=$?
+check "legacy -h flag is rejected" test "$rc" -ne 0
 if command -v z80asm >/dev/null 2>&1; then
     ( cd "$run" && z80asm -o hello.bin hello.asm ) >/dev/null 2>&1
-    check "-h output assembles to a 32K ROM" test "$(wc -c < "$run/hello.bin")" -eq 32768
+    check "smsheader output assembles to a 32K ROM" test "$(wc -c < "$run/hello.bin")" -eq 32768
     magic=$(dd if="$run/hello.bin" bs=1 skip=32752 count=8 2>/dev/null)
     check "SMS magic sits at 7FF0" test "$magic" = "TMR SEGA"
 else
@@ -269,10 +282,10 @@ do i = 0 to 3;
 end;
 end;
 PLM
-( cd "$run" && "$PLM" smsvar.plm -h ) >/dev/null 2>&1
-check "-h places variables in SMS RAM" \
+( cd "$run" && "$PLM" smsvar.plm smsheader ) >/dev/null 2>&1
+check "smsheader places variables in SMS RAM" \
     grep -qE 'SMSVAR_I:[[:space:]]+equ[[:space:]]+0C000H' "$run/smsvar.asm"
-check "-h places the stack in SMS RAM" \
+check "smsheader places the stack in SMS RAM" \
     grep -qE 'SMSVAR_STACK_ORIGIN:[[:space:]]+equ[[:space:]]+0DFF0H' "$run/smsvar.asm"
 cat > "$run/smsinit.plm" <<'PLM'
 smsinit: do;
@@ -280,26 +293,23 @@ declare t(2) byte initial (1, 2);
 output(7fh) = t(1);
 end;
 PLM
-( cd "$run" && "$PLM" smsinit.plm -h ) >/dev/null 2>&1
-check "-h keeps INITIAL bytes in ROM" \
+( cd "$run" && "$PLM" smsinit.plm smsheader ) >/dev/null 2>&1
+check "smsheader keeps INITIAL bytes in ROM" \
     grep -q 'SMSINIT_T_INIT:' "$run/smsinit.asm"
-check "-h defines INITIAL variables in RAM" \
+check "smsheader defines INITIAL variables in RAM" \
     grep -qE 'SMSINIT_T:[[:space:]]+equ[[:space:]]+0C000H' "$run/smsinit.asm"
-check "-h copies INITIAL data to RAM at startup" \
+check "smsheader copies INITIAL data to RAM at startup" \
     grep -q 'ldir' "$run/smsinit.asm"
 
 echo "== error messages"
 run="$TMP/err"
 mkdir -p "$run"
 cp "$TMP/hello.plm" "$run/"
-( cd "$run" && "$PLM" hello.plm 'print(a-very-long-listing-name.lst)' ) > "$run/e1.txt" 2>&1
-rc=$?
-check "over-long control path rejected" test "$rc" -ne 0
-if grep -q 'ILLEGAL COMMAND TAIL SYNTAX OR VALUE' "$run/e1.txt"; then
-    ok "reports bad command tail for over-long path"
-else
-    no "reports bad command tail for over-long path"
-fi
+( cd "$run" && "$PLM" hello.plm 'print(a-very-long-listing-name.lst)' ) >/dev/null 2>&1
+check "29 character control path accepted" test -f "$run/a-very-long-listing-name.lst"
+long150=$(printf 'c%.0s' $(seq 1 150)).lst
+( cd "$run" && "$PLM" hello.plm "print($long150)" ) >/dev/null 2>&1
+check "150 character control path accepted" test -f "$run/$long150"
 
 echo "== output hygiene"
 run="$TMP/hygiene"
