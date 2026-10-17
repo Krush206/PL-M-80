@@ -78,6 +78,7 @@ bool standAlone = true;
 bool IXREFSet = true;
 bool PRINTSet = true;
 bool OBJECTSet = true;
+bool objFileGiven = false;   /* OBJECT(pathname) seen: write the .obj file */
 bool afterEOF = false;
 bool haveModuleLevelUnit = false;
 byte fatalErrorCode = 0;
