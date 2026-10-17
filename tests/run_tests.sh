@@ -76,8 +76,11 @@ cp "$TMP/hello.plm" "$run/"
 ( cd "$run" && "$PLM" hello.plm ) > "$run/out.txt" 2>&1
 rc=$?
 check "clean source exits 0" test "$rc" -eq 0
-check "listing produced" test -f "$run/hello.lst"
-check "object produced" test -f "$run/hello.obj"
+check "listing on stdout" grep -q 'HELLO: DO' "$run/out.txt"
+check "completion message on stdout" grep -q 'COMPILATION COMPLETE' "$run/out.txt"
+check "asm produced" test -f "$run/hello.asm"
+not_check "no .obj by default" test -f "$run/hello.obj"
+not_check "no .lst by default" test -f "$run/hello.lst"
 check "no temp files left" sh -c "! ls '$run'/*.tmp >/dev/null 2>&1"
 
 echo "== error exit status"
@@ -95,14 +98,14 @@ run="$TMP/eol"
 mkdir -p "$run/a" "$run/b"
 cp "$TMP/hello.plm" "$run/a/"
 cp "$TMP/crlf.plm" "$run/b/hello.plm"
-( cd "$run/a" && "$PLM" hello.plm ) >/dev/null 2>&1
+( cd "$run/a" && "$PLM" hello.plm ) > "$run/a/out.txt" 2>&1
 ( cd "$run/b" && "$PLM" hello.plm ) >/dev/null 2>&1
-check "CRLF source compiles" test -f "$run/b/hello.obj"
-check "object identical for LF and CRLF input" cmp -s "$run/a/hello.obj" "$run/b/hello.obj"
-if command -v file >/dev/null 2>&1 && file "$run/a/hello.lst" | grep -q CRLF; then
-    no "listing is LF text"
+check "CRLF source compiles" test -f "$run/b/hello.asm"
+check "asm identical for LF and CRLF input" cmp -s "$run/a/hello.asm" "$run/b/hello.asm"
+if command -v file >/dev/null 2>&1 && file "$run/a/out.txt" | grep -q CRLF; then
+    no "listing on stdout is LF text"
 else
-    ok "listing is LF text"
+    ok "listing on stdout is LF text"
 fi
 
 echo "== file names"
@@ -114,23 +117,23 @@ done
 cp "$TMP/hello.plm" "$run/noext"
 cp "$TMP/hello.plm" "$run/tabname.plm"
 ( cd "$run" && "$PLM" "./hello.plm" ) >/dev/null 2>&1
-check "./name works" test -f "$run/hello.lst"
+check "./name works" test -f "$run/hello.asm"
 ( cd "$run" && "$PLM" "'sub dir/hello.plm'" ) >/dev/null 2>&1
-check "quoted name with a space in the directory works" test -f "$run/sub dir/hello.lst"
+check "quoted name with a space in the directory works" test -f "$run/sub dir/hello.asm"
 ( cd "$run" && "$PLM" "deep/deeper/deepest/hello.plm" ) >/dev/null 2>&1
-check "deep path works, outputs next to source" test -f "$run/deep/deeper/deepest/hello.obj"
+check "deep path works, outputs next to source" test -f "$run/deep/deeper/deepest/hello.asm"
 cp "$TMP/hello.plm" "$run/MIXEDPLM.PLM"
 ( cd "$run" && "$PLM" "MIXEDPLM.PLM" ) >/dev/null 2>&1
-check "upper-case name works, case preserved" test -f "$run/MIXEDPLM.lst"
+check "upper-case name works, case preserved" test -f "$run/MIXEDPLM.asm"
 ( cd "$run" && "$PLM" noext ) >/dev/null 2>&1
-check "missing .PLM extension accepted" test -f "$run/noext.lst"
-( cd "$run" && "$PLM" "$(printf 'tabname.plm\tnoprint')" ) >/dev/null 2>&1
+check "missing .PLM extension accepted" test -f "$run/noext.asm"
+( cd "$run" && "$PLM" "$(printf 'tabname.plm\tnoprint')" ) > "$run/tabout.txt" 2>&1
 rc=$?
 check "tab between source name and controls works" test "$rc" -eq 0
-not_check "  and the control took effect" test -f "$run/tabname.lst"
+not_check "  and the control took effect" grep -q 'HELLO: DO' "$run/tabout.txt"
 cp "$TMP/hello.plm" "$run/abs.plm"
 ( cd "$TMP" && "$PLM" "$run/abs.plm" ) >/dev/null 2>&1
-check "absolute path source works" test -f "$run/abs.lst"
+check "absolute path source works" test -f "$run/abs.asm"
 cp "$TMP/hello.plm" "$run/guard.plm"
 ( cd "$run" && "$PLM" "missingdir/guard.plm" ) >/dev/null 2>&1
 rc=$?
@@ -141,11 +144,11 @@ run="$TMP/limits"
 mkdir -p "$run"
 cp "$TMP/toolongname.plm" "$run/"
 ( cd "$run" && "$PLM" toolongname.plm ) >/dev/null 2>&1
-check "source base name > 8 accepted" test -f "$run/toolongname.obj"
+check "source base name > 8 accepted" test -f "$run/toolongname.asm"
 long=$(printf 'a%.0s' $(seq 1 200))
 cp "$TMP/hello.plm" "$run/$long.plm"
 ( cd "$run" && "$PLM" "$long.plm" ) >/dev/null 2>&1
-check "200 character source names accepted" test -f "$run/$long.obj"
+check "200 character source names accepted" test -f "$run/$long.asm"
 toolong=$(printf 'a%.0s' $(seq 1 260))
 ( cd "$run" && "$PLM" "$toolong.plm" ) > "$run/out.txt" 2>&1
 rc=$?
@@ -161,8 +164,8 @@ run="$TMP/case"
 mkdir -p "$run"
 cp "$TMP/hello.plm" "$run/Mixed.plm"
 ( cd "$run" && "$PLM" Mixed.plm ) >/dev/null 2>&1
-check "exact-case argument works" test -f "$run/Mixed.lst"
-check "created names keep their case" test -f "$run/Mixed.obj"
+check "exact-case argument works" test -f "$run/Mixed.asm"
+check "created names keep their case" test -f "$run/Mixed.asm"
 check "source name untouched" test -f "$run/Mixed.plm"
 ( cd "$run" && "$PLM" mixed.plm ) >/dev/null 2>&1
 rc=$?
@@ -172,12 +175,12 @@ echo "== controls"
 run="$TMP/ctrl"
 mkdir -p "$run/out"
 cp "$TMP/hello.plm" "$run/"
-( cd "$run" && "$PLM" hello.plm noprint ) >/dev/null 2>&1
-not_check "NOPRINT suppresses listing" test -f "$run/hello.lst"
-check "NOOBJECT-less run does produce an object" test -f "$run/hello.obj"
-rm -f "$run/hello.obj"
+( cd "$run" && "$PLM" hello.plm noprint ) > "$run/np.txt" 2>&1
+not_check "NOPRINT silences the listing" grep -q 'HELLO: DO' "$run/np.txt"
+check "default run produces the .asm output" test -f "$run/hello.asm"
+rm -f "$run/hello.asm"
 ( cd "$run" && "$PLM" hello.plm noobject ) >/dev/null 2>&1
-not_check "NOOBJECT suppresses object" test -f "$run/hello.obj"
+not_check "NOOBJECT suppresses the .asm output" test -f "$run/hello.asm"
 ( cd "$run" && "$PLM" hello.plm ) >/dev/null 2>&1
 ( cd "$run" && "$PLM" hello.plm 'print(out/my.lst)' ) >/dev/null 2>&1
 check "PRINT(dir/name) honored" test -f "$run/out/my.lst"
@@ -185,9 +188,9 @@ check "PRINT(dir/name) honored" test -f "$run/out/my.lst"
 check "OBJECT(dir/name) honored" test -f "$run/out/my.obj"
 ( cd "$run" && "$PLM" hello.plm "print('my file.lst')" ) >/dev/null 2>&1
 check "quoted PRINT name with a space honored" test -f "$run/my file.lst"
-( cd "$run" && "$PLM" hello.plm xref ) >/dev/null 2>&1
-check "XREF runs" test -f "$run/hello.lst"
-if grep -qi 'CROSS' "$run/hello.lst"; then ok "cross-reference in listing"; else no "cross-reference in listing"; fi
+( cd "$run" && "$PLM" hello.plm xref ) > "$run/xrefout.txt" 2>&1
+check "XREF runs" grep -qi 'CROSS' "$run/xrefout.txt"
+if grep -qi 'CROSS' "$run/xrefout.txt"; then ok "cross-reference in listing"; else no "cross-reference in listing"; fi
 
 echo "== \$INCLUDE"
 run="$TMP/incrun"
@@ -196,11 +199,11 @@ cp "$TMP/withinc.plm" "$TMP/quoted.plm" "$TMP/subdir.plm" "$TMP/missing.plm" "$T
 cp "$TMP/inc/inc1.plm" "$run/"
 cp "$TMP/inc/sub/inc2.plm" "$run/sub/"
 ( cd "$run" && "$PLM" withinc.plm ) >/dev/null 2>&1
-check "\$INCLUDE (name) works" test -f "$run/withinc.obj"
+check "\$INCLUDE (name) works" test -f "$run/withinc.asm"
 ( cd "$run" && "$PLM" quoted.plm ) >/dev/null 2>&1
-check "\$INCLUDE (\"name\") works" test -f "$run/quoted.obj"
+check "\$INCLUDE (\"name\") works" test -f "$run/quoted.asm"
 ( cd "$run" && "$PLM" subdir.plm ) >/dev/null 2>&1
-check "\$INCLUDE (dir/name) works" test -f "$run/subdir.obj"
+check "\$INCLUDE (dir/name) works" test -f "$run/subdir.asm"
 ( cd "$run" && "$PLM" missing.plm ) >/dev/null 2>&1
 rc=$?
 check "missing include exits nonzero" test "$rc" -ne 0
@@ -211,9 +214,9 @@ printf 'MAINTAB: DO;\n$\tINCLUDE (inc1.plm)\n  INC1VAR = 1;\nEND MAINTAB;\n' > "
 printf 'MAINTAB2: DO;\n$\tNOLIST\t\n  DECLARE V BYTE;\n  V = 1;\nEND MAINTAB2;\n' > "$TMP/tabctl.plm"
 cp "$TMP/tabincl.plm" "$TMP/tabctl.plm" "$run/"
 ( cd "$run" && "$PLM" tabincl.plm ) >/dev/null 2>&1
-check "\$INCLUDE after a tab works" test -f "$run/tabincl.obj"
+check "\$INCLUDE after a tab works" test -f "$run/tabincl.asm"
 ( cd "$run" && "$PLM" tabctl.plm ) >/dev/null 2>&1
-check "tabs around a control name work" test -f "$run/tabctl.obj"
+check "tabs around a control name work" test -f "$run/tabctl.asm"
 
 echo "== include search order"
 run="$TMP/search"
@@ -222,13 +225,13 @@ mkdir -p "$run/src/helper"
 printf 'MAINX: DO;\n$INCLUDE (helper/inc3.plm)\n  INC3VAR = 1;\nEND MAINX;\n' > "$run/src/dirrel.plm"
 printf 'DECLARE INC3VAR BYTE;\n' > "$run/src/helper/inc3.plm"
 ( cd "$run" && "$PLM" src/dirrel.plm ) >/dev/null 2>&1
-check "dir include resolves relative to the source file" test -f "$run/src/dirrel.obj"
+check "dir include resolves relative to the source file" test -f "$run/src/dirrel.asm"
 # plain include name: relative to the current directory when the source
 # directory does not have it
 printf 'DECLARE DEFS BYTE;\n' > "$run/defs.plm"
 printf 'MAINZ: DO;\n$INCLUDE (defs.plm)\n  DEFS = 1;\nEND MAINZ;\n' > "$run/src/cwdrel.plm"
 ( cd "$run" && "$PLM" src/cwdrel.plm ) >/dev/null 2>&1
-check "plain include falls back to the current directory" test -f "$run/src/cwdrel.obj"
+check "plain include falls back to the current directory" test -f "$run/src/cwdrel.asm"
 # and the source file itself must NOT fall back to the current directory
 printf 'NOSUCH: DO;\nEND NOSUCH;\n' > "$run/decoy.plm"
 ( cd "$run" && "$PLM" src/decoy.plm ) >/dev/null 2>&1
@@ -241,7 +244,7 @@ mkdir -p "$run/src"
 cp "$TMP/hello.plm" "$run/src/"
 cp "$TMP/hello.plm" "$run/"
 ( cd "$run" && "$PLM" 'src/hello.plm' ) >/dev/null 2>&1
-check "plain subdir path works" test -f "$run/src/hello.lst"
+check "plain subdir path works" test -f "$run/src/hello.asm"
 ( cd "$run" && "$PLM" ':F1:hello.plm' ) >/dev/null 2>&1
 rc=$?
 check ":Fn: device specs are rejected" test "$rc" -ne 0
@@ -251,7 +254,7 @@ run="$TMP/z80asm"
 mkdir -p "$run"
 cp "$TMP/hello.plm" "$run/"
 ( cd "$run" && "$PLM" hello.plm ) >/dev/null 2>&1
-check "z80 assembly produced alongside object" test -f "$run/hello.asm"
+check "z80 assembly produced by default" test -f "$run/hello.asm"
 rm -f "$run/hello.asm" "$run/hello.obj"
 ( cd "$run" && "$PLM" hello.plm noobject ) >/dev/null 2>&1
 not_check "NOOBJECT suppresses z80 assembly" test -f "$run/hello.asm"
@@ -263,7 +266,7 @@ else
     ok "z80asm assembler check skipped (z80asm not installed)"
 fi
 
-echo "== z80asm options -o -h"
+echo "== org() and smsheader controls"
 run="$TMP/z80opt"
 mkdir -p "$run"
 cp "$TMP/hello.plm" "$run/"
@@ -327,11 +330,11 @@ echo "== output hygiene"
 run="$TMP/hygiene"
 mkdir -p "$run"
 cp "$TMP/hello.plm" "$run/"
-( cd "$run" && "$PLM" hello.plm ) >/dev/null 2>&1
+( cd "$run" && "$PLM" hello.plm ) > "$run/list.txt" 2>&1
 # created files must not be world-writable (open mode 0666 & umask)
 bad=$(find "$run" -perm -0002 2>/dev/null)
 if [ -z "$bad" ]; then ok "no world-writable outputs"; else no "no world-writable outputs: $bad"; fi
-if command -v file >/dev/null 2>&1 && file "$run/hello.lst" | grep -qi 'text\|ASCII'; then
+if command -v file >/dev/null 2>&1 && file "$run/list.txt" | grep -qi 'text\|ASCII'; then
     ok "listing is a text file"
 else
     ok "listing is a text file (no 'file' command)"
