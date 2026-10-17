@@ -153,11 +153,21 @@ static word MapFile(osfile_t *osfileP, const char *path)
     clean[len] = 0;
 
     if (clean[0] == ':') {
-        if ((clean[1] == 'C' || clean[1] == 'c') &&
-            (clean[2] == 'I' || clean[2] == 'i') &&
-            clean[3] == ':' && clean[4] == 0) {
+        /* the only devices still known: the two consoles.  :CI: feeds the
+           command tail, :CO: is standard output (the default listing). */
+        int isC = (clean[1] == 'C' || clean[1] == 'c');
+        int isI = (clean[2] == 'I' || clean[2] == 'i');
+        int isO = (clean[2] == 'O' || clean[2] == 'o');
+
+        if (clean[4] == 0 && clean[3] == ':' && isC && isI) {
             osfileP->deviceId = 23; /* CI, see Open() */
             osfileP->modes = READ_MODE;
+            osfileP->altName[0] = 0;
+            return ERROR_SUCCESS;
+        }
+        if (clean[4] == 0 && clean[3] == ':' && isC && isO) {
+            osfileP->deviceId = 24; /* CO, see Open() */
+            osfileP->modes = WRITE_MODE + RANDOM_ACCESS;
             osfileP->altName[0] = 0;
             return ERROR_SUCCESS;
         }
@@ -606,6 +616,11 @@ void Open(wpointer connP, pointer pathP, word access, word echo, wpointer status
         *connP = CI_DEV;
         return;
     }
+    else if (osfile.deviceId == 24) { // CO, standard output (listing)
+        aft[CO_DEV].mode = access;
+        *connP = CO_DEV;
+        return;
+    }
 
     // allocate a handle
     for (handle = 2; handle < AFTSIZE; handle++)
@@ -727,6 +742,15 @@ void Seek(word conn, word mode, wpointer blockP, wpointer byteP, wpointer status
 {
     long offset;
     int origin;
+
+    if (conn <= BB_DEV) {   /* consoles and bit bucket: no-op, always succeeds */
+        if (mode == SEEKTELL) {
+            *blockP = 0;
+            *byteP = 0;
+        }
+        *statusP = 0;
+        return;
+    }
 
     if ((*statusP = ChkMode(conn, RANDOM_ACCESS)) != ERROR_SUCCESS)
         return;
