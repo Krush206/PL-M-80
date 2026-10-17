@@ -26,7 +26,7 @@ There are no external dependencies.
 Examples:
 
 ```sh
-./plm80c hello.plm                      # hello.plm, writes hello.lst + hello.obj
+./plm80c hello.plm                      # listing on stdout, writes hello.asm
 ./plm80c hello.plm noprint noobject     # compile only
 ./plm80c src/app.plm 'print(lst/app.lst)'
 ./plm80c "'sub dir/app.plm'"            # quoted: may contain spaces
@@ -44,17 +44,17 @@ line / environment failures.
 
 ## Z80 assembly output (z80asm)
 
-Whenever the `OBJECT` control is in effect the compiler writes, next to
-`hello.obj`, a `hello.asm` file with the module in the dialect of the
-`z80asm` assembler by Bas Wijnen (package `z80asm`):
+The compiler writes a `hello.asm` file next to the source, in the dialect
+of the `z80asm` assembler by Bas Wijnen (package `z80asm`).  There is no
+`.obj` and no `.lst` by default: the listing goes to standard output.
 
 ```sh
-./plm80c hello.plm          # writes hello.lst + hello.obj + hello.asm
+./plm80c hello.plm          # listing on stdout, writes hello.asm
 z80asm -o hello.bin hello.asm
 ```
 
-`NOOBJECT` suppresses the `.asm` file together with the `.obj` file, and
-`OBJECT(dir/name.obj)` places `dir/name.asm` next to it.  The 8080 code the
+`NOOBJECT` suppresses the `.asm` file, and `OBJECT(dir/name.obj)` also
+writes an ISIS-format `dir/name.obj`, placing `dir/name.asm` next to it.  The 8080 code the
 compiler generates is translated 1:1 to Z80 mnemonics; data definitions,
 the stack reservation and cross references are emitted symbolically, so no
 locator is needed.  There is deliberately no `org` directive in the file
@@ -153,8 +153,9 @@ names are used exactly as written (case preserved).
   Extensions are optional when reading: `foo` finds `foo.plm`.
 
 * **Outputs land next to the source.**  `./plm80c sub/app.plm` writes
-  `sub/app.lst` and `sub/app.obj` (unless `PRINT(...)`/`OBJECT(...)` says
-  otherwise, or `NOPRINT`/`NOOBJECT` suppress them).  A directory inside a
+  `sub/app.asm` (unless `OBJECT(...)` says otherwise, or `NOOBJECT`
+  suppresses it; `PRINT(...)` adds a listing file and `NOPRINT` silences
+  the stdout listing).  A directory inside a
   control file name (`PRINT(out/x.lst)`) is relative to the current
   directory.
 
@@ -191,8 +192,8 @@ line, tabs are separators wherever spaces are (`$\tINCLUDE (f.plm)` works).
 ## Line endings
 
 Input is read byte for byte; a CR is just whitespace to the scanner, so
-both LF and CRLF sources compile.  Output text (console messages and
-`.lst` listings) uses LF; object files, `.ixi` cross-reference files and
+both LF and CRLF sources compile.  Output text (the listing, banner and
+completion message on standard output) uses LF; object files, `.ixi` cross-reference files and
 internal `.tmp` scratch files stay byte-for-byte compatible with the
 MS-DOS/ISIS format (CRLF record markers) so that the linker and other tools
 in this suite still read them.
