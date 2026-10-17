@@ -1423,6 +1423,7 @@ extern file_t nmsFile;
 extern word objBlk;
 extern word objByte;
 extern bool OBJECTSet;
+extern bool objFileGiven;    /* a .obj file was explicitly requested */
 extern file_t objFile;
 extern byte objFileName[];
 extern file_t asmFile;
