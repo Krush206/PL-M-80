@@ -35,7 +35,6 @@ static byte noMemMsg[] = "NOT ENOUGH MEMORY FOR A COMPILATION";
 static byte aIxi[] = ".ixi";
 static byte aObj[] = ".obj";
 static byte aAsm[] = ".asm";
-static byte aLst[] = ".lst";
 static byte aInvocationComm[] = "INVOCATION COMMAND DOES NOT END WITH <CR><LF>";
 static byte aSourceFileName[] = "SOURCE FILE NAME INCORRECT";
 static byte aIllegalCommand[] = "ILLEGAL COMMAND TAIL SYNTAX";
@@ -287,8 +286,7 @@ static void InitFilesAndDefaults()
     memmove(&asmFileName[srcStemLen], aAsm, 4);
     InitF(&asmFile, (pointer)"ASM   ", asmFileName);
     memset(lstFileName, 0, NAME_SLOT + 4);
-    memmove(lstFileName, srcStemName, srcStemLen);
-    memmove(&lstFileName[srcStemLen], aLst, 4);
+    memmove(lstFileName, ":CO:", 5);    /* the listing goes to stdout by default */
     InitF(&lstFil, (pointer)"LIST ", lstFileName);
     InitF(&tx1File, (pointer)"UT1 ", (pointer)"PLMTX1.TMP ");
     InitF(&tx2File, (pointer)"UT2 ", (pointer)"PLMTX2.TMP ");
