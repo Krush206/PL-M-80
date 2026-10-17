@@ -155,7 +155,7 @@ void Sub_423C()
 #ifdef _DEBUG
     copyFile(tx1File.fNam, "plmtx1.tmp_main4");
 #endif
-    if (OBJECT) {
+    if (OBJECT && objFileGiven) {
         Fwrite(&objFile, objEOF, 4);
         Fflush(&objFile);
         CloseF(&objFile);
