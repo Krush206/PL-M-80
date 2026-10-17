@@ -45,7 +45,7 @@ static void Sub_3F3C()
     if (b7199 || IXREF)
         CreatF(&nmsFile, nmsBuf, 1280, 1);
     CreatF(&atFile, atBuf, 1280, 1);
-    if (OBJECT) {
+    if (OBJECT && objFileGiven) {
         OpenF(&objFile, 3);
         CreatF(&objFile, objBuf, 1280, 2);
         SekEnd(&objFile);
