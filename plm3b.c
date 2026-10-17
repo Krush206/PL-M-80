@@ -33,7 +33,7 @@ void WriteRec(pointer recP, byte arg2b)
     word cnt;
 
     lenP = &((rec_t *)recP)->len;
-    if (*lenP > 0 && OBJECT ) {
+    if (*lenP > 0 && OBJECT && objFileGiven) {
         crc = 0;
         p = 0;
         *lenP += arg2b + 1;
