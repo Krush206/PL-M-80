@@ -266,6 +266,25 @@ else
     ok "z80asm assembler check skipped (z80asm not installed)"
 fi
 
+echo "== z80 emulator core self-test"
+run="$TMP/emu"
+mkdir -p "$run"
+if command -v z80asm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1 \
+   && [ -f "$here/z80core_test.asm" ] && [ -f "$here/z80run.py" ]; then
+    ( cd "$run" && z80asm -o core.bin "$here/z80core_test.asm" ) >/dev/null 2>&1
+    if [ -f "$run/core.bin" ]; then
+        ( cd "$run" && timeout 120 python3 "$here/z80run.py" 200000 core core.bin \
+            > core.out 2>&1 )
+        check "emulator core self-test passes" \
+            grep -q 'core result: 01' "$run/core.out"
+        not_check "  and no unknown opcodes" grep -q 'UNKNOWN' "$run/core.out"
+    else
+        ok "emulator self-test skipped (assembly failed)"
+    fi
+else
+    ok "emulator self-test skipped (tools missing)"
+fi
+
 echo "== org() and smsheader controls"
 run="$TMP/z80opt"
 mkdir -p "$run"
