@@ -96,18 +96,18 @@ Limitations:
 ## Sega Master System output
 
 `./plm80c game.plm 'org(0)' smsheader` writes a `.asm` whose assembled
-binary is a 32KB
-SMS ROM image: the program followed by the 16-byte cartridge header at
-`7FF0H` (`"TMR SEGA"`, reserved `FFFFH`, zero checksum and product code,
-version 0, `4CH` = SMS Export with checksum range `0000-7FEF`):
+binary is a 32KB SMS ROM image: the program followed by the 16-byte
+cartridge header at `7FF0H` (`"TMR SEGA"`, reserved `FFFFH`, zero checksum
+and product code, version 0, `4CH` = SMS Export with checksum range
+`0000-7FEF`):
 
 ```sh
-./plm80c game.plm -h
+./plm80c game.plm 'org(0)' smsheader
 z80asm -o game.sms game.asm   # exactly 32768 bytes
 ```
 
-The header always sits at absolute `7FF0H`, so use `-h` with the default
-origin 0.  If the program does not fit below the header the compiler
+The header always sits at absolute `7FF0H`, so combine `smsheader` with
+`org(0)`.  If the program does not fit below the header the compiler
 refuses to write the `.asm` file (exit status 2); the `.obj`/`.lst` files
 are still produced.
 
