@@ -672,6 +672,7 @@ static void OptObject()
     objBlk = objByte = 0;
     OBJECT = true;
     OBJECTSet = true;
+    objFileGiven = true;    /* only an explicit OBJECT control writes .obj */
     OpenF(&objFile, 2);
     objGiven = true;
 }
